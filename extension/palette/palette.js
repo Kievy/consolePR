@@ -263,6 +263,11 @@
         showSettings(settings.hidden);
     });
     hotkeyField.addEventListener("click", startCapture);
+    // A plain link would navigate this window instead of opening the browser.
+    document.getElementById("credit-link").addEventListener("click", function (event) {
+        event.preventDefault();
+        window.cep.util.openURLInDefaultBrowser(event.currentTarget.href);
+    });
     hotkeyDefault.addEventListener("click", function () {
         saveHotkey(ConsoleHotkey.DEFAULT);
     });

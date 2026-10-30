@@ -204,6 +204,8 @@ body.settings-open #search-icon { display: none; }
 }
 
 #settings {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   padding: 20px 26px;
@@ -264,6 +266,8 @@ body.settings-open #search-icon { display: none; }
 }
 
 #hotkey-default {
+  align-self: flex-start;
+  flex: none;
   height: 38px;
   padding: 0 18px;
   border: 1px solid var(--line-strong);
@@ -277,6 +281,26 @@ body.settings-open #search-icon { display: none; }
 #hotkey-default:focus {
   border-color: rgba(255, 255, 255, 0.35);
   outline: 0;
+}
+
+.credit {
+  margin: auto 0 0;
+  padding-top: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.credit a {
+  color: var(--accent-soft);
+  text-decoration: none;
+}
+
+.credit a:hover,
+.credit a:focus {
+  color: #fff;
+  outline: 0;
+  text-decoration: underline;
 }
 
 footer {
