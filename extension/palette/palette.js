@@ -1,6 +1,7 @@
 (function () {
     var cep = window.__adobe_cep__;
     var EFFECTS_FALLBACK_MS = 3000;
+    var FRAME_DONE_MS = 1200;
     var FOCUS_GRACE_MS = 1000; // Premiere briefly takes focus while the window opens
     var openedAt = Date.now();
     var GROUPS = [
@@ -17,6 +18,8 @@
     var hotkeyField = document.getElementById("hotkey-field");
     var hotkeyDefault = document.getElementById("hotkey-default");
     var hotkeyMessage = document.getElementById("hotkey-message");
+    var frameButton = document.getElementById("frame-button");
+    var frameMenu = document.getElementById("frame-menu");
     var accentControl = document.getElementById("accent-control");
     var accentSwatch = document.getElementById("accent-swatch");
     var accentHex = document.getElementById("accent-hex");
@@ -34,6 +37,8 @@
     var currentHotkey = ConsoleHotkey.DEFAULT;
     var capturing = false;
     var saveTimer = null;
+    var framing = false;
+    var saveFolder = "";
     var accent = ConsoleColor.DEFAULT;
     var accentHsv = ConsoleColor.hexToHsv(accent);
 
@@ -53,10 +58,106 @@
         cep.closeExtension();
     }
 
-    function showStatus(message) {
+    function showStatus(message, isInfo) {
         status.textContent = message;
+        status.title = message;
         status.hidden = !message;
+        status.classList.toggle("info", !!isInfo);
     }
+
+    function showFrameMenu(visible) {
+        frameMenu.hidden = !visible;
+        frameButton.setAttribute("aria-expanded", String(visible));
+        if (visible) {
+            frameMenu.querySelector("button").focus();
+        }
+    }
+
+    function hostCall(script, done) {
+        cep.evalScript(script, function (response) {
+            try {
+                done(JSON.parse(response));
+            } catch (e) {
+                done({ ok: false, message: "Erro: " + response });
+            }
+        });
+    }
+
+    function finishFraming(message) {
+        framing = false;
+        openedAt = Date.now();
+        showStatus(message);
+        search.focus();
+        dispatch("com.consolepr.present");
+    }
+
+    function requestFrame(request) {
+        showStatus("Capturando o frame...", true);
+        dispatch("com.consolepr.captureFrame", JSON.stringify(request));
+    }
+
+    function askWhereToSave(mode, frameName) {
+        var result = window.cep.fs.showSaveDialogEx(
+            "Salvar print do frame",
+            saveFolder,
+            [mode === "jpeg" ? "jpg" : "png", mode === "jpeg" ? "jpeg" : "png"],
+            ConsoleFrame.fileNameFor(frameName, mode === "jpeg" ? "jpg" : "png")
+        );
+        return result && !result.err && result.data ? ConsoleFrame.withExtension(result.data, mode) : null;
+    }
+
+    function takeFrame(mode) {
+        if (framing) {
+            return;
+        }
+        framing = true;
+        showFrameMenu(false);
+        hostCall("ConsolePR.frameInfo()", function (info) {
+            if (!info.ok) {
+                finishFraming(info.message);
+            } else if (mode === "clipboard") {
+                requestFrame({ mode: mode });
+            } else {
+                var target = askWhereToSave(mode, info.name);
+                if (target) {
+                    requestFrame({ mode: mode, path: target });
+                } else {
+                    finishFraming("");
+                }
+            }
+        });
+    }
+
+    frameButton.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+    });
+    frameButton.addEventListener("click", function () {
+        showFrameMenu(frameMenu.hidden);
+    });
+    Array.prototype.forEach.call(frameMenu.querySelectorAll("button"), function (item) {
+        item.addEventListener("click", function () {
+            takeFrame(item.getAttribute("data-frame"));
+        });
+    });
+    document.addEventListener("mousedown", function (event) {
+        if (!frameMenu.hidden && !frameMenu.contains(event.target) && event.target !== frameButton && !frameButton.contains(event.target)) {
+            showFrameMenu(false);
+            search.focus();
+        }
+    });
+
+    cep.addEventListener("com.consolepr.saveFolderCurrent", function (event) {
+        saveFolder = event.data;
+    });
+    cep.addEventListener("com.consolepr.frameDone", function (event) {
+        var outcome = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (outcome.error) {
+            finishFraming(outcome.error);
+            return;
+        }
+        showStatus(outcome.path ? "Salvo em " + outcome.path : "Copiado para a área de transferência", true);
+        setTimeout(close, FRAME_DONE_MS);
+    });
 
     function select(index, scroll) {
         if (!rows.length) {
@@ -354,6 +455,7 @@
             stopCapture();
         }
         showAccentPicker(false);
+        showFrameMenu(false);
         settings.hidden = !visible;
         document.body.classList.toggle("settings-open", visible);
         settingsTitle.hidden = !visible;
@@ -420,6 +522,19 @@
             event.preventDefault();
             return;
         }
+        if (!frameMenu.hidden) {
+            if (event.keyCode === 27) {
+                showFrameMenu(false);
+                search.focus();
+                event.preventDefault();
+            } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                var items = Array.prototype.slice.call(frameMenu.querySelectorAll("button"));
+                var step = event.key === "ArrowDown" ? 1 : items.length - 1;
+                items[(items.indexOf(document.activeElement) + step) % items.length].focus();
+                event.preventDefault();
+            }
+            return;
+        }
         if (!settings.hidden) {
             if (event.keyCode === 27) {
                 if (accentPicker.hidden) {
@@ -457,13 +572,13 @@
     });
 
     window.addEventListener("blur", function () {
-        if (!applying && Date.now() - openedAt > FOCUS_GRACE_MS) {
+        if (!applying && !framing && Date.now() - openedAt > FOCUS_GRACE_MS) {
             close();
         }
     });
 
     window.addEventListener("focus", function () {
-        if (settings.hidden) {
+        if (settings.hidden && frameMenu.hidden) {
             search.focus();
         }
     });

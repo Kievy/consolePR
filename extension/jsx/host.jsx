@@ -1,5 +1,8 @@
 // ExtendScript side of ConsolePR. ES3 only: no JSON object, no Array.map, etc.
-// Both hosts expose the same two calls: listEffects() and applyEffect(kind, name).
+// Both hosts expose the same calls: listEffects(), applyEffect(kind, name),
+// frameInfo() and captureFrame(basePath), which writes basePath + ".png" at full
+// quality. When its answer has a "restore" list, call finishCapture with those values
+// once the file is ready.
 
 var ConsolePR = (function () {
     function quote(s) {
@@ -34,6 +37,10 @@ var ConsolePR = (function () {
         return names;
     }
 
+    function frameResult(name) {
+        return '{"ok":true,"name":' + quote(name) + "}";
+    }
+
     function result(ok, message, count) {
         return '{"ok":' + (ok ? "true" : "false") +
             ',"message":' + quote(message || "") +
@@ -41,6 +48,13 @@ var ConsolePR = (function () {
     }
 
     function afterEffects() {
+        var UNDO_COMMAND = 16;
+
+        function isFull(comp) {
+            var factor = comp.resolutionFactor;
+            return factor[0] === 1 && factor[1] === 1;
+        }
+
         function isAudio(effect) {
             return /^[a\u00e1]udio$/i.test(effect.category);
         }
@@ -72,6 +86,58 @@ var ConsolePR = (function () {
                     return '{"video":' + toJsonArray(video) + ',"audio":' + toJsonArray(audio) + "}";
                 } catch (e) {
                     return '{"error":' + quote(e.toString()) + "}";
+                }
+            },
+
+            frameInfo: function () {
+                try {
+                    var comp = app.project.activeItem;
+                    if (!(comp instanceof CompItem)) {
+                        return result(false, "Abra uma composição.");
+                    }
+                    return frameResult(comp.name + " " + timeToCurrentFormat(comp.time, comp.frameRate));
+                } catch (e) {
+                    return result(false, e.toString());
+                }
+            },
+
+            captureFrame: function (basePath) {
+                try {
+                    var comp = app.project.activeItem;
+                    if (!(comp instanceof CompItem)) {
+                        return result(false, "Abra uma composição.");
+                    }
+                    var file = new File(basePath + ".png");
+                    // The frame follows the comp's resolution, as chosen in the viewer.
+                    if (isFull(comp)) {
+                        comp.saveFrameToPng(comp.time, file);
+                        return result(true, "");
+                    }
+                    var factor = comp.resolutionFactor;
+                    comp.resolutionFactor = [1, 1];
+                    comp.saveFrameToPng(comp.time, file);
+                    return '{"ok":true,"restore":[' + comp.id + "," + factor[0] + "," + factor[1] + "]}";
+                } catch (e) {
+                    return result(false, e.toString());
+                }
+            },
+
+            // Undoes the switch to full quality so the print leaves no step in the
+            // user's undo history. Checks the state first, in case anything else
+            // happened meanwhile, and sets the value directly if undo didn't get it back.
+            finishCapture: function (compId, x, y) {
+                try {
+                    var comp = app.project.itemByID(compId);
+                    if (comp && isFull(comp)) {
+                        app.executeCommand(UNDO_COMMAND);
+                    }
+                    comp = app.project.itemByID(compId);
+                    if (comp && (comp.resolutionFactor[0] !== x || comp.resolutionFactor[1] !== y)) {
+                        comp.resolutionFactor = [x, y];
+                    }
+                    return result(true, "");
+                } catch (e) {
+                    return result(false, e.toString());
                 }
             },
 
@@ -188,6 +254,35 @@ var ConsolePR = (function () {
                     ',"audio":' + toJsonArray(normalizeList(qe.project.getAudioEffectList())) + "}";
             } catch (e) {
                 return '{"error":' + quote(e.toString()) + "}";
+            }
+        },
+
+        frameInfo: function () {
+            try {
+                var seq = app.project.activeSequence;
+                if (!seq) {
+                    return result(false, "Abra uma sequência.");
+                }
+                app.enableQE();
+                return frameResult(seq.name + " " + qe.project.getActiveSequence().CTI.timecode);
+            } catch (e) {
+                return result(false, e.toString());
+            }
+        },
+
+        captureFrame: function (basePath) {
+            try {
+                if (!app.project.activeSequence) {
+                    return result(false, "Abra uma sequência.");
+                }
+                app.enableQE();
+                var qeSeq = qe.project.getActiveSequence();
+                // Premiere adds the .png itself.
+                // Always at sequence size: the monitor's playback resolution doesn't apply.
+                qeSeq.exportFramePNG(qeSeq.CTI.timecode, basePath);
+                return result(true, "");
+            } catch (e) {
+                return result(false, e.toString());
             }
         },
 

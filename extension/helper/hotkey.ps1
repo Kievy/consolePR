@@ -10,6 +10,8 @@
 #         the new one can't be registered.
 #         "suspend-hotkey" and "resume-hotkey" release the hotkey while a new
 #         combination is being recorded, so it can reach the palette.
+#         "clipboard <file>" copies a PNG file to the clipboard and answers
+#         "clipboard-ok" or "clipboard-error <message>".
 # Exits when stdin closes (the extension went away) or the host exits.
 param([string]$Hotkey = "Ctrl+Space", [string]$HostProcess)
 
@@ -19,6 +21,9 @@ Add-Type -TypeDefinition @"
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -180,6 +185,30 @@ public static class ConsolePrHotkey {
         PostMessage(view, WM_LBUTTONUP, IntPtr.Zero, position);
     }
 
+    // Offers both a bitmap, which every program accepts, and the PNG itself, which
+    // keeps transparency in programs that read it. The clipboard requires STA.
+    static string CopyToClipboard(string file) {
+        string error = null;
+        Thread thread = new Thread(delegate () {
+            try {
+                byte[] png = File.ReadAllBytes(file);
+                using (MemoryStream imageStream = new MemoryStream(png))
+                using (Bitmap bitmap = new Bitmap(imageStream)) {
+                    DataObject data = new DataObject();
+                    data.SetData(DataFormats.Bitmap, true, bitmap);
+                    data.SetData("PNG", false, new MemoryStream(png));
+                    Clipboard.SetDataObject(data, true, 10, 100);
+                }
+            } catch (Exception e) {
+                error = e.Message;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        return error;
+    }
+
     static void Style(IntPtr palette) {
         long style = GetWindowLongPtr(palette, GWL_STYLE).ToInt64();
         SetWindowLongPtr(palette, GWL_STYLE, new IntPtr(style & ~(WS_CAPTION | WS_THICKFRAME)));
@@ -277,6 +306,10 @@ public static class ConsolePrHotkey {
                     presentTicks = PRESENT_TICKS;
                     styled = false;
                     roundedSize = 0;
+                } else if (command.StartsWith("clipboard ")) {
+                    string clipboardError = CopyToClipboard(command.Substring("clipboard ".Length));
+                    Console.Out.WriteLine(clipboardError == null ? "clipboard-ok" : "clipboard-error " + clipboardError.Replace("\n", " "));
+                    Console.Out.Flush();
                 } else if (command == "suspend-hotkey") {
                     suspended = true;
                 } else if (command == "resume-hotkey") {
@@ -327,6 +360,6 @@ public static class ConsolePrHotkey {
         if (registered) UnregisterHotKey(IntPtr.Zero, HOTKEY_ID);
     }
 }
-"@
+"@ -ReferencedAssemblies System.Windows.Forms,System.Drawing
 
 [ConsolePrHotkey]::Run($Hotkey, $HostProcess)

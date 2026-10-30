@@ -10,7 +10,13 @@
     <span id="search-icon" data-icon="search"></span>
     <input id="search" type="text" spellcheck="false" autocomplete="off" placeholder="Buscar efeito..." autofocus>
     <span id="settings-title" hidden>Configurações</span>
+    <button id="frame-button" type="button" title="Print do frame atual" aria-label="Print do frame atual" aria-haspopup="menu" aria-expanded="false" data-icon="camera"></button>
     <button id="settings-button" type="button" title="Configurações" aria-label="Configurações" data-icon="gear"></button>
+    <div id="frame-menu" role="menu" hidden>
+      <button type="button" role="menuitem" data-frame="clipboard"><span data-icon="clipboard"></span>Copiar para a área de transferência</button>
+      <button type="button" role="menuitem" data-frame="png"><span data-icon="picture"></span>Salvar como PNG</button>
+      <button type="button" role="menuitem" data-frame="jpeg"><span data-icon="picture"></span>Salvar como JPEG</button>
+    </div>
   </header>
   <main id="list" role="listbox"></main>
   <section id="settings" hidden>
@@ -39,6 +45,7 @@
   <script src="search.js"></script>
   <script src="hotkey.js"></script>
   <script src="color.js"></script>
+  <script src="frame.js"></script>
   <script src="palette.js"></script>
 </body>
 </html>

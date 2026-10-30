@@ -44,6 +44,13 @@ Efeitos de vídeo vão só para clipes de vídeo, e efeitos de áudio só para c
 
 A janela também abre em `Window > Extensions > ConsolePR`.
 
+## Print do frame
+
+Clique no botão da câmera, ao lado da engrenagem, para capturar o frame onde está a agulha da sequência ativa no Premiere ou da composição ativa no After Effects. O print sai sempre em qualidade máxima, no tamanho da sequência ou composição, mesmo com o preview em 1/2 ou 1/4:
+
+- **Copiar para a área de transferência:** é só colar em outro programa.
+- **Salvar como PNG ou JPEG:** escolha a pasta e o nome na janela de salvar. O ConsolePR lembra a última pasta usada.
+
 ## Trocar o atalho
 
 1. Abra a janela e clique na engrenagem ao lado da busca.
@@ -77,5 +84,5 @@ Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
 ## Testes
 
 ```bash
-node --test test/search.test.js test/hotkey.test.js test/color.test.js
+node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js
 ```
