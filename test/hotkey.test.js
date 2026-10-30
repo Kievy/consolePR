@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { defaultFor, settingFor, fromKeyEvent, label } = require("../extension/palette/hotkey.js");
+const { DEFAULT, settingFor, fromKeyEvent, label } = require("../extension/palette/hotkey.js");
 
 function key(keyCode, modifiers) {
     return Object.assign({ keyCode: keyCode, ctrlKey: false, altKey: false, shiftKey: false }, modifiers);
@@ -29,9 +29,8 @@ test("rejects combinations that would break typing or Windows", () => {
     assert.ok(fromKeyEvent(key(186, { ctrlKey: true })).error);
 });
 
-test("each host has its own default and saved setting", () => {
-    assert.strictEqual(defaultFor("PPRO"), "Ctrl+Space");
-    assert.strictEqual(defaultFor("AEFT"), "Ctrl+Shift+Space");
+test("both hosts share the default and keep separate saved settings", () => {
+    assert.strictEqual(DEFAULT, "Ctrl+Space");
     assert.strictEqual(settingFor("PPRO"), "hotkey");
     assert.strictEqual(settingFor("AEFT"), "hotkeyAfterEffects");
 });

@@ -18,7 +18,7 @@ Você precisa de Windows e do Premiere Pro ou do After Effects instalado. Não �
    ```
 
 3. Dê dois cliques em **`install.bat`** e aguarde a mensagem de conclusão. Se o Windows mostrar um aviso de segurança, escolha **Mais informações > Executar assim mesmo**.
-4. Abra o programa e aperte o atalho com ele em primeiro plano: `Ctrl+Espaço` no Premiere ou `Ctrl+Shift+Espaço` no After Effects.
+4. Abra o programa e aperte `Ctrl+Espaço` com ele em primeiro plano.
 
 O instalador copia a extensão para `%APPDATA%\Adobe\CEP\extensions\com.consolepr`, então a pasta baixada pode ser apagada depois. Para atualizar, baixe a versão nova e repita os passos.
 
@@ -49,9 +49,9 @@ A janela também abre em `Window > Extensions > ConsolePR`.
 1. Abra a janela e clique na engrenagem ao lado da busca.
 2. Clique no campo do atalho e pressione a nova combinação. Ela passa a valer na hora, sem reiniciar o Premiere.
 
-Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para o padrão do programa.
+Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para `Ctrl+Espaço`.
 
-Cada programa guarda o próprio atalho. O padrão do After Effects é diferente para não tomar o `Ctrl+Espaço` do FX Console, caso você use os dois.
+Cada programa guarda o próprio atalho. Se você usa o FX Console no After Effects, o ConsolePR tem prioridade sobre o `Ctrl+Espaço`; troque o atalho de um dos dois para usar ambos.
 
 As configurações ficam em `%APPDATA%\ConsolePR\config.json` e são mantidas ao reinstalar ou atualizar.
 

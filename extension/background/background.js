@@ -24,7 +24,7 @@
     var paletteOpen = false;
     var helper = null;
     var effectsJson = null;
-    var currentHotkey = ConsoleHotkey.defaultFor(APP_ID);
+    var currentHotkey = ConsoleHotkey.DEFAULT;
     // Each host keeps its own hotkey; the accent color is shared.
     var hotkeySetting = ConsoleHotkey.settingFor(APP_ID);
 

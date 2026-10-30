@@ -1,6 +1,5 @@
 (function () {
     var cep = window.__adobe_cep__;
-    var APP_ID = JSON.parse(cep.getHostEnvironment()).appId;
     var EFFECTS_FALLBACK_MS = 3000;
     var FOCUS_GRACE_MS = 1000; // Premiere briefly takes focus while the window opens
     var openedAt = Date.now();
@@ -32,8 +31,7 @@
     var rows = [];
     var selected = 0;
     var applying = false;
-    var defaultHotkey = ConsoleHotkey.defaultFor(APP_ID);
-    var currentHotkey = defaultHotkey;
+    var currentHotkey = ConsoleHotkey.DEFAULT;
     var capturing = false;
     var saveTimer = null;
     var accent = ConsoleColor.DEFAULT;
@@ -385,7 +383,7 @@
         window.cep.util.openURLInDefaultBrowser(event.currentTarget.href);
     });
     hotkeyDefault.addEventListener("click", function () {
-        saveHotkey(defaultHotkey);
+        saveHotkey(ConsoleHotkey.DEFAULT);
     });
 
     cep.addEventListener("com.consolepr.hotkeyCurrent", function (event) {
@@ -473,7 +471,7 @@
     // Second hotkey press closes the window.
     cep.addEventListener("com.consolepr.toggle", close);
 
-    hotkeyDefault.textContent = "Restaurar padrão (" + ConsoleHotkey.label(defaultHotkey) + ")";
+    hotkeyDefault.textContent = "Restaurar padrão (" + ConsoleHotkey.label(ConsoleHotkey.DEFAULT) + ")";
     setAccent(accent);
     render();
     search.focus();

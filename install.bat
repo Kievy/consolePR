@@ -19,7 +19,7 @@ for /l %%v in (9,1,22) do (
 
 echo ConsolePR instalado em %TARGET%
 echo Reinicie o Premiere e o After Effects.
-echo Atalho no Premiere: Ctrl+Espaco. No After Effects: Ctrl+Shift+Espaco.
+echo Atalho nos dois programas: Ctrl+Espaco.
 goto end
 
 :missing

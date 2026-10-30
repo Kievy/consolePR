@@ -1,8 +1,7 @@
 // Turns a keydown event into the hotkey text understood by helper/hotkey.ps1.
 // Runs in the browser and in test/hotkey.test.js.
 (function (root) {
-    // FX Console already uses Ctrl+Space in After Effects.
-    var DEFAULTS = { PPRO: "Ctrl+Space", AEFT: "Ctrl+Shift+Space" };
+    var DEFAULT = "Ctrl+Space";
     var MODIFIER_KEY_CODES = [16, 17, 18, 91, 92];
 
     // keyCode is the Windows virtual key, so it does not change with the keyboard layout.
@@ -52,17 +51,13 @@
         return hotkey.replace(/Space/, "Espaço").replace(/\+/g, " + ");
     }
 
-    function defaultFor(appId) {
-        return DEFAULTS[appId] || DEFAULTS.PPRO;
-    }
-
     // Name of the saved setting. Premiere keeps the name it had before the port.
     function settingFor(appId) {
         return appId === "AEFT" ? "hotkeyAfterEffects" : "hotkey";
     }
 
     root.ConsoleHotkey = {
-        defaultFor: defaultFor,
+        DEFAULT: DEFAULT,
         settingFor: settingFor,
         fromKeyEvent: fromKeyEvent,
         label: label
