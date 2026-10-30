@@ -2,7 +2,7 @@
 
 Busca rápida de efeitos para o Adobe Premiere Pro e o After Effects, no estilo do FX Console: aperte um atalho, digite parte do nome e o efeito é aplicado aos clipes ou camadas selecionados.
 
-![Janela do ConsolePR filtrando efeitos de vídeo e de áudio enquanto o nome é digitado](docs/demo.gif)
+![Janela do ConsolePR filtrando efeitos de vídeo e de áudio enquanto o nome é digitado, e abrindo o menu de print do frame](docs/demo.gif)
 
 Testado no Premiere Pro 2026 (26.5.2) e no After Effects 2026 (26.5) no Windows. O atalho global só existe no Windows. O manifesto aceita as versões 22 ou superiores dos dois programas, mas versões anteriores às testadas não foram verificadas.
 
