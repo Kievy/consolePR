@@ -38,7 +38,8 @@ public static class ConsolePrHotkey {
     const uint WM_LBUTTONDOWN = 0x0201;
     const uint WM_LBUTTONUP = 0x0202;
     const int SEARCH_BOX_X = 220;
-    const int SEARCH_BOX_Y = 26;
+    const int SEARCH_BOX_Y = 34;
+    const int WINDOW_RADIUS = 26; // keep in sync with --radius in palette/style.css
     const int HOTKEY_ID = 0x4350;
     const int PRESENT_TICKS = 32; // about 800 ms, keep below FOCUS_GRACE_MS in palette.js
 
@@ -62,6 +63,9 @@ public static class ConsolePrHotkey {
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc cb, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
+    [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr hWnd, IntPtr region, bool redraw);
+    [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr hWnd);
+    [DllImport("gdi32.dll")] static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     static bool IsHostProcess(uint pid) {
@@ -201,6 +205,22 @@ public static class ConsolePrHotkey {
         SetWindowPos(palette, IntPtr.Zero, x, y, width, height, SWP_NOZORDER | SWP_FRAMECHANGED);
     }
 
+    // Premiere resizes the window once more after Style, so the rounded corners
+    // follow its current size. Returns that size to detect the next change.
+    static long RoundCorners(IntPtr palette, long roundedSize) {
+        RECT win;
+        GetWindowRect(palette, out win);
+        int width = win.Right - win.Left;
+        int height = win.Bottom - win.Top;
+        long size = ((long)width << 32) | (uint)height;
+        if (size != roundedSize) {
+            // Windows owns the region after this call, so it must not be deleted here.
+            int diameter = 2 * WINDOW_RADIUS * (int)GetDpiForWindow(palette) / 96;
+            SetWindowRgn(palette, CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter), true);
+        }
+        return size;
+    }
+
     public static void Run(string hotkey) {
         uint modifiers, vk;
         ParseHotkey(hotkey, out modifiers, out vk);
@@ -221,6 +241,7 @@ public static class ConsolePrHotkey {
         int ticks = 0;
         int presentTicks = 0;
         bool styled = false;
+        long roundedSize = 0;
         MSG msg;
         while (!stdinClosed) {
             bool wantRegistered = !suspended && ForegroundIsHost();
@@ -248,6 +269,7 @@ public static class ConsolePrHotkey {
                 if (command == "present") {
                     presentTicks = PRESENT_TICKS;
                     styled = false;
+                    roundedSize = 0;
                 } else if (command == "suspend-hotkey") {
                     suspended = true;
                 } else if (command == "resume-hotkey") {
@@ -282,6 +304,7 @@ public static class ConsolePrHotkey {
                         Style(palette);
                         styled = true;
                     }
+                    roundedSize = RoundCorners(palette, roundedSize);
                     if (presentTicks % 4 == 0 && !PaletteHasFocus(palette)) ClickSearchBox(palette);
                 }
             }

@@ -15,13 +15,14 @@ Você precisa de Windows e do Premiere Pro instalado. Não é preciso instalar m
    git clone https://github.com/Kievy/consolePR.git
    ```
 
-3. Abra o PowerShell na pasta do projeto (a que contém o `install.ps1`) e rode:
-
-   ```bash
-   powershell -ExecutionPolicy Bypass -File install.ps1
-   ```
-
+3. Dê dois cliques em **`install.bat`** e aguarde a mensagem de conclusão. Se o Windows mostrar um aviso de segurança, escolha **Mais informações > Executar assim mesmo**.
 4. Abra o Premiere e aperte `Ctrl+Espaço` com ele em primeiro plano.
+
+Se preferir o terminal, rode na pasta do projeto:
+
+```bash
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
 
 O instalador copia a extensão para `%APPDATA%\Adobe\CEP\extensions\com.consolepr`, então a pasta baixada pode ser apagada depois. Para atualizar, baixe a versão nova e repita os passos.
 

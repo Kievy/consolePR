@@ -32,8 +32,8 @@
           <Menu>ConsolePR</Menu>
           <Geometry>
             <Size>
-              <Height>330</Height>
-              <Width>440</Width>
+              <Height>440</Height>
+              <Width>445</Width>
             </Size>
           </Geometry>
         </UI>

@@ -86,14 +86,23 @@
                 return;
             }
             var header = document.createElement("div");
-            header.className = "group " + group.kind;
-            header.textContent = group.label;
+            header.className = "group";
+            var label = document.createElement("span");
+            label.textContent = group.label;
+            var badge = document.createElement("span");
+            badge.className = "badge";
+            badge.textContent = names.length;
+            header.appendChild(label);
+            header.appendChild(badge);
             list.appendChild(header);
             names.forEach(function (name) {
                 var el = document.createElement("div");
                 el.className = "item";
-                el.textContent = name;
                 el.title = name;
+                el.appendChild(ConsoleIcons.create(group.kind));
+                var text = document.createElement("span");
+                text.textContent = name;
+                el.appendChild(text);
                 var index = rows.length;
                 el.addEventListener("mousemove", function () {
                     if (selected !== index) {
@@ -232,6 +241,7 @@
             stopCapture();
         }
         settings.hidden = !visible;
+        document.body.classList.toggle("settings-open", visible);
         settingsTitle.hidden = !visible;
         list.hidden = visible;
         search.hidden = visible;
