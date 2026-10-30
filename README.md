@@ -51,9 +51,13 @@ A janela também abre em `Window > Extensions > ConsolePR`.
 
 Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para `Ctrl+Espaço`.
 
-A escolha fica em `%APPDATA%\ConsolePR\config.json` e é mantida ao reinstalar ou atualizar.
+As configurações ficam em `%APPDATA%\ConsolePR\config.json` e são mantidas ao reinstalar ou atualizar.
 
 O atalho só fica registrado enquanto o Premiere está em primeiro plano, então a mesma combinação continua funcionando nos outros programas. Enquanto isso, ele tem prioridade sobre um atalho igual configurado no próprio Premiere.
+
+## Mudar a cor de destaque
+
+Na mesma tela da engrenagem, digite um código hexadecimal (como `#C64BF2`) ou clique no círculo colorido para abrir o seletor de cores. A cor muda na hora e fica salva junto com o atalho. O botão **Padrão** volta para o roxo original.
 
 ## Como funciona
 
@@ -71,5 +75,5 @@ Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
 ## Testes
 
 ```bash
-node --test test/search.test.js test/hotkey.test.js
+node --test test/search.test.js test/hotkey.test.js test/color.test.js
 ```

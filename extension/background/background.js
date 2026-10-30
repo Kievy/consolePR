@@ -9,6 +9,7 @@
 
     var PALETTE_ID = "com.consolepr.palette";
     var DEFAULT_HOTKEY = "Ctrl+Space";
+    var ACCENT_PATTERN = /^#[0-9A-F]{6}$/i;
 
     var extensionDir = path.normalize(
         decodeURI(cep.getSystemPath("extension")).replace(/^file:\/+/, "")
@@ -21,6 +22,7 @@
     var paletteOpen = false;
     var helper = null;
     var currentHotkey = DEFAULT_HOTKEY;
+    var config = {};
 
     function log(message) {
         try {
@@ -28,21 +30,20 @@
         } catch (e) { /* logging must never break the hotkey */ }
     }
 
-    function readHotkey() {
+    function readConfig() {
         try {
-            var config = JSON.parse(fs.readFileSync(configFile, "utf8"));
-            return config.hotkey || DEFAULT_HOTKEY;
+            return JSON.parse(fs.readFileSync(configFile, "utf8")) || {};
         } catch (e) {
-            return DEFAULT_HOTKEY;
+            return {};
         }
     }
 
-    function saveHotkey(hotkey) {
+    function saveConfig() {
         try {
             fs.mkdirSync(configDir, { recursive: true });
-            fs.writeFileSync(configFile, JSON.stringify({ hotkey: hotkey }, null, 2) + os.EOL);
+            fs.writeFileSync(configFile, JSON.stringify(config, null, 2) + os.EOL);
         } catch (e) {
-            log("could not save hotkey: " + e.message);
+            log("could not save settings: " + e.message);
         }
     }
 
@@ -90,7 +91,8 @@
                     onHotkey();
                 } else if (text.indexOf("hotkey-ok ") === 0) {
                     currentHotkey = text.substring("hotkey-ok ".length);
-                    saveHotkey(currentHotkey);
+                    config.hotkey = currentHotkey;
+                    saveConfig();
                     dispatch("com.consolepr.hotkeySaved", currentHotkey);
                 } else if (text.indexOf("hotkey-error ") === 0) {
                     dispatch("com.consolepr.hotkeyRejected", text.substring("hotkey-error ".length));
@@ -121,6 +123,9 @@
         paletteOpen = true;
         tellHelper("present");
         dispatch("com.consolepr.hotkeyCurrent", currentHotkey);
+        if (ACCENT_PATTERN.test(config.accent)) {
+            dispatch("com.consolepr.accentCurrent", config.accent);
+        }
     });
     cep.addEventListener("com.consolepr.closed", function () {
         paletteOpen = false;
@@ -132,6 +137,12 @@
     cep.addEventListener("com.consolepr.resumeHotkey", function () {
         tellHelper("resume-hotkey");
     });
+    cep.addEventListener("com.consolepr.setAccent", function (event) {
+        if (ACCENT_PATTERN.test(event.data)) {
+            config.accent = event.data;
+            saveConfig();
+        }
+    });
     cep.addEventListener("com.consolepr.setHotkey", function (event) {
         if (helper) {
             tellHelper("set-hotkey " + event.data);
@@ -141,6 +152,7 @@
     });
 
     log("background started, extension at " + extensionDir);
-    currentHotkey = readHotkey();
+    config = readConfig();
+    currentHotkey = config.hotkey || DEFAULT_HOTKEY;
     startHelper();
 })();

@@ -17,14 +17,28 @@
     <label for="hotkey-field">Atalho para abrir o ConsolePR</label>
     <button id="hotkey-field" type="button"></button>
     <p id="hotkey-message" role="status"></p>
-    <p class="hint">Clique no campo e pressione a nova combinação. Use Ctrl ou Alt com uma letra, número ou Espaço, ou uma tecla F. Com o Premiere em foco, o atalho tem prioridade sobre os comandos dele que usam a mesma combinação.</p>
+    <p class="hint">Clique no campo e pressione a combinação: Ctrl ou Alt com letra, número ou Espaço, ou uma tecla F. Com o Premiere em foco, ela tem prioridade sobre comandos iguais dele.</p>
     <button id="hotkey-default" type="button">Restaurar padrão (Ctrl + Espaço)</button>
+    <div id="accent-control">
+      <label for="accent-hex">Cor de destaque</label>
+      <div id="accent-row">
+        <button id="accent-swatch" type="button" title="Abrir seletor de cores" aria-label="Abrir seletor de cores" aria-expanded="false"></button>
+        <input id="accent-hex" type="text" maxlength="7" spellcheck="false" autocomplete="off" aria-describedby="accent-message">
+        <button id="accent-default" type="button">Padrão</button>
+      </div>
+      <p id="accent-message" role="status" hidden></p>
+      <div id="accent-picker" hidden>
+        <div id="accent-sv" role="application" aria-label="Saturação e brilho"><div id="accent-sv-thumb"></div></div>
+        <input id="accent-hue" type="range" min="0" max="360" step="1" aria-label="Matiz">
+      </div>
+    </div>
     <p class="credit">Feito por <a id="credit-link" href="https://www.instagram.com/kievydsg/">@kievydsg</a></p>
   </section>
   <footer id="status" hidden></footer>
   <script src="icons.js"></script>
   <script src="search.js"></script>
   <script src="hotkey.js"></script>
+  <script src="color.js"></script>
   <script src="palette.js"></script>
 </body>
 </html>

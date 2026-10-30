@@ -17,6 +17,15 @@
     var hotkeyField = document.getElementById("hotkey-field");
     var hotkeyDefault = document.getElementById("hotkey-default");
     var hotkeyMessage = document.getElementById("hotkey-message");
+    var accentControl = document.getElementById("accent-control");
+    var accentSwatch = document.getElementById("accent-swatch");
+    var accentHex = document.getElementById("accent-hex");
+    var accentDefault = document.getElementById("accent-default");
+    var accentMessage = document.getElementById("accent-message");
+    var accentPicker = document.getElementById("accent-picker");
+    var accentSv = document.getElementById("accent-sv");
+    var accentThumb = document.getElementById("accent-sv-thumb");
+    var accentHue = document.getElementById("accent-hue");
 
     var effects = { video: [], audio: [] };
     var rows = [];
@@ -25,6 +34,8 @@
     var currentHotkey = ConsoleHotkey.DEFAULT;
     var capturing = false;
     var saveTimer = null;
+    var accent = ConsoleColor.DEFAULT;
+    var accentHsv = ConsoleColor.hexToHsv(accent);
 
     function dispatch(type, data) {
         // CEP silently drops events without the real appId and extensionId.
@@ -235,11 +246,119 @@
         }
     }
 
+    function paintAccent(hex) {
+        var style = document.documentElement.style;
+        accent = hex;
+        style.setProperty("--accent", hex);
+        style.setProperty("--accent-rgb", ConsoleColor.hexToRgb(hex).join(", "));
+        style.setProperty("--accent-soft", ConsoleColor.soften(hex));
+        style.setProperty("--accent-glow", ConsoleColor.glowOpacity(hex));
+    }
+
+    function paintPicker() {
+        accentSv.style.backgroundColor = ConsoleColor.hsvToHex({ h: accentHsv.h, s: 1, v: 1 });
+        accentThumb.style.left = accentHsv.s * 100 + "%";
+        accentThumb.style.top = (1 - accentHsv.v) * 100 + "%";
+        accentHue.value = accentHsv.h;
+    }
+
+    function showAccentError(message) {
+        accentMessage.textContent = message;
+        accentMessage.hidden = !message;
+        accentHex.classList.toggle("invalid", !!message);
+    }
+
+    // For a color typed or loaded: everything follows it, including the picker.
+    function setAccent(hex) {
+        paintAccent(hex);
+        accentHsv = ConsoleColor.hexToHsv(hex);
+        accentHex.value = hex;
+        showAccentError("");
+        paintPicker();
+    }
+
+    // For a color picked: hue and saturation stay where the user left them even
+    // if the color alone can't express them, as with black or white.
+    function pickAccent() {
+        var hex = ConsoleColor.hsvToHex(accentHsv);
+        paintAccent(hex);
+        accentHex.value = hex;
+        showAccentError("");
+        paintPicker();
+    }
+
+    function saveAccent() {
+        dispatch("com.consolepr.setAccent", accent);
+    }
+
+    function showAccentPicker(visible) {
+        accentPicker.hidden = !visible;
+        accentSwatch.setAttribute("aria-expanded", String(visible));
+    }
+
+    accentSwatch.addEventListener("click", function () {
+        showAccentPicker(accentPicker.hidden);
+    });
+    accentDefault.addEventListener("click", function () {
+        setAccent(ConsoleColor.DEFAULT);
+        saveAccent();
+    });
+    accentHex.addEventListener("input", function () {
+        var hex = ConsoleColor.normalizeHex(accentHex.value);
+        if (hex) {
+            paintAccent(hex);
+            accentHsv = ConsoleColor.hexToHsv(hex);
+            showAccentError("");
+            paintPicker();
+            saveAccent();
+        } else {
+            showAccentError("Use um código como #C64BF2.");
+        }
+    });
+    accentHex.addEventListener("blur", function () {
+        accentHex.value = accent;
+        showAccentError("");
+    });
+    accentHue.addEventListener("input", function () {
+        accentHsv.h = Number(accentHue.value);
+        pickAccent();
+    });
+    accentHue.addEventListener("change", saveAccent);
+
+    function pickFromPointer(event) {
+        var box = accentSv.getBoundingClientRect();
+        accentHsv.s = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+        accentHsv.v = 1 - Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
+        pickAccent();
+    }
+
+    accentSv.addEventListener("pointerdown", function (event) {
+        accentSv.setPointerCapture(event.pointerId);
+        pickFromPointer(event);
+    });
+    accentSv.addEventListener("pointermove", function (event) {
+        if (accentSv.hasPointerCapture(event.pointerId)) {
+            pickFromPointer(event);
+        }
+    });
+    accentSv.addEventListener("pointerup", saveAccent);
+
+    document.addEventListener("mousedown", function (event) {
+        if (!accentPicker.hidden && !accentControl.contains(event.target)) {
+            showAccentPicker(false);
+        }
+    });
+
+    cep.addEventListener("com.consolepr.accentCurrent", function (event) {
+        setAccent(event.data);
+    });
+
     function showSettings(visible) {
         if (capturing) {
             dispatch("com.consolepr.resumeHotkey");
             stopCapture();
         }
+        showAccentPicker(false);
         settings.hidden = !visible;
         document.body.classList.toggle("settings-open", visible);
         settingsTitle.hidden = !visible;
@@ -308,7 +427,11 @@
         }
         if (!settings.hidden) {
             if (event.keyCode === 27) {
-                showSettings(false);
+                if (accentPicker.hidden) {
+                    showSettings(false);
+                } else {
+                    showAccentPicker(false);
+                }
                 event.preventDefault();
             }
             return;
@@ -353,6 +476,7 @@
     // Second hotkey press closes the window.
     cep.addEventListener("com.consolepr.toggle", close);
 
+    setAccent(accent);
     render();
     loadEffects();
     search.focus();
