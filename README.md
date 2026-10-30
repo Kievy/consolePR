@@ -1,16 +1,16 @@
 # ConsolePR
 
-Busca rápida de efeitos para o Adobe Premiere Pro, no estilo do FX Console: aperte um atalho, digite parte do nome e o efeito é aplicado aos clipes selecionados.
+Busca rápida de efeitos para o Adobe Premiere Pro e o After Effects, no estilo do FX Console: aperte um atalho, digite parte do nome e o efeito é aplicado aos clipes ou camadas selecionados.
 
 ![Janela do ConsolePR filtrando efeitos de vídeo e de áudio enquanto o nome é digitado](docs/demo.gif)
 
-Testado no Premiere Pro 2026 (26.5.2) no Windows. O atalho global só existe no Windows. O manifesto aceita Premiere 22 ou superior, mas versões anteriores à 26.5 não foram testadas.
+Testado no Premiere Pro 2026 (26.5.2) e no After Effects 2026 (26.5) no Windows. O atalho global só existe no Windows. O manifesto aceita as versões 22 ou superiores dos dois programas, mas versões anteriores às testadas não foram verificadas.
 
 ## Instalação
 
-Você precisa de Windows e do Premiere Pro instalado. Não é preciso instalar mais nada.
+Você precisa de Windows e do Premiere Pro ou do After Effects instalado. Não é preciso instalar mais nada.
 
-1. Feche o Premiere.
+1. Feche o Premiere e o After Effects.
 2. Baixe o projeto: clique em **Code > Download ZIP** nesta página e extraia o arquivo em qualquer pasta. Se preferir usar o Git:
 
    ```bash
@@ -18,7 +18,7 @@ Você precisa de Windows e do Premiere Pro instalado. Não é preciso instalar m
    ```
 
 3. Dê dois cliques em **`install.bat`** e aguarde a mensagem de conclusão. Se o Windows mostrar um aviso de segurança, escolha **Mais informações > Executar assim mesmo**.
-4. Abra o Premiere e aperte `Ctrl+Espaço` com ele em primeiro plano.
+4. Abra o programa e aperte o atalho com ele em primeiro plano: `Ctrl+Espaço` no Premiere ou `Ctrl+Shift+Espaço` no After Effects.
 
 O instalador copia a extensão para `%APPDATA%\Adobe\CEP\extensions\com.consolepr`, então a pasta baixada pode ser apagada depois. Para atualizar, baixe a versão nova e repita os passos.
 
@@ -31,16 +31,16 @@ A extensão não é assinada, então o instalador também liga o `PlayerDebugMod
 
 ### Desinstalar
 
-Com o Premiere fechado, dê dois cliques em **`uninstall.bat`**. Ele remove a extensão e o atalho salvo, e mantém o `PlayerDebugMode` ligado porque outras extensões podem precisar dele.
+Com o Premiere e o After Effects fechados, dê dois cliques em **`uninstall.bat`**. Ele remove a extensão e o atalho salvo, e mantém o `PlayerDebugMode` ligado porque outras extensões podem precisar dele.
 
 ## Uso
 
-1. Selecione um ou mais clipes na timeline.
-2. Aperte `Ctrl+Espaço` com o Premiere em primeiro plano.
+1. Selecione um ou mais clipes na timeline do Premiere, ou camadas na composição do After Effects.
+2. Aperte o atalho com o programa em primeiro plano.
 3. Digite parte do nome. Acentos e maiúsculas são ignorados, e letras em sequência também funcionam (`gblur` encontra Gaussian Blur).
 4. Use `Enter` ou clique para aplicar. `↑`/`↓` navegam, `Esc`, clicar fora ou repetir o atalho fecham a janela.
 
-Efeitos de vídeo vão só para clipes de vídeo, e efeitos de áudio só para clipes de áudio. Os nomes aparecem como o Premiere os informa ao script, em inglês mesmo com a busca em português.
+Efeitos de vídeo vão só para clipes de vídeo, e efeitos de áudio só para clipes de áudio. No After Effects, a aplicação em várias camadas é desfeita de uma vez com `Ctrl+Z`. Os nomes aparecem como cada programa os informa ao script.
 
 A janela também abre em `Window > Extensions > ConsolePR`.
 
@@ -49,26 +49,28 @@ A janela também abre em `Window > Extensions > ConsolePR`.
 1. Abra a janela e clique na engrenagem ao lado da busca.
 2. Clique no campo do atalho e pressione a nova combinação. Ela passa a valer na hora, sem reiniciar o Premiere.
 
-Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para `Ctrl+Espaço`.
+Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para o padrão do programa.
+
+Cada programa guarda o próprio atalho. O padrão do After Effects é diferente para não tomar o `Ctrl+Espaço` do FX Console, caso você use os dois.
 
 As configurações ficam em `%APPDATA%\ConsolePR\config.json` e são mantidas ao reinstalar ou atualizar.
 
-O atalho só fica registrado enquanto o Premiere está em primeiro plano, então a mesma combinação continua funcionando nos outros programas. Enquanto isso, ele tem prioridade sobre um atalho igual configurado no próprio Premiere.
+O atalho só fica registrado enquanto o Premiere ou o After Effects está em primeiro plano, então a mesma combinação continua funcionando nos outros programas. Enquanto isso, ele tem prioridade sobre um atalho igual configurado no próprio programa.
 
 ## Mudar a cor de destaque
 
-Na mesma tela da engrenagem, digite um código hexadecimal (como `#C64BF2`) ou clique no círculo colorido para abrir o seletor de cores. A cor muda na hora e fica salva junto com o atalho. O botão **Padrão** volta para o roxo original.
+Na mesma tela da engrenagem, digite um código hexadecimal (como `#C64BF2`) ou clique no círculo colorido para abrir o seletor de cores. A cor muda na hora, fica salva junto com o atalho e vale para os dois programas. O botão **Padrão** volta para o roxo original.
 
 ## Como funciona
 
 | Parte | Função |
 | --- | --- |
-| `extension/background` | Extensão invisível que inicia com o Premiere e controla o processo do atalho |
+| `extension/background` | Extensão invisível que inicia com o programa e controla o processo do atalho |
 | `extension/helper/hotkey.ps1` | Registra o atalho, tira a barra de título da janela, centraliza e dá foco ao campo de busca |
 | `extension/palette` | Janela de busca |
-| `extension/jsx/host.jsx` | Lista e aplica os efeitos pela API QE do Premiere |
+| `extension/jsx/host.jsx` | Lista e aplica os efeitos: API QE no Premiere e `app.effects` no After Effects |
 
-A API QE não é documentada pela Adobe e pode mudar em versões futuras do Premiere.
+A API QE do Premiere não é documentada pela Adobe e pode mudar em versões futuras.
 
 Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
 

@@ -1,6 +1,7 @@
 (function () {
     var cep = window.__adobe_cep__;
-    var CACHE_KEY = "consolepr.effects";
+    var APP_ID = JSON.parse(cep.getHostEnvironment()).appId;
+    var EFFECTS_FALLBACK_MS = 3000;
     var FOCUS_GRACE_MS = 1000; // Premiere briefly takes focus while the window opens
     var openedAt = Date.now();
     var GROUPS = [
@@ -31,7 +32,8 @@
     var rows = [];
     var selected = 0;
     var applying = false;
-    var currentHotkey = ConsoleHotkey.DEFAULT;
+    var defaultHotkey = ConsoleHotkey.defaultFor(APP_ID);
+    var currentHotkey = defaultHotkey;
     var capturing = false;
     var saveTimer = null;
     var accent = ConsoleColor.DEFAULT;
@@ -161,36 +163,31 @@
         });
     }
 
-    function loadEffects() {
+    function showEffects(response) {
+        var list;
         try {
-            var cached = JSON.parse(localStorage.getItem(CACHE_KEY));
-            if (cached && cached.video) {
-                effects = cached;
-                render();
-            }
-        } catch (e) { /* no usable cache: wait for Premiere's list */ }
-
-        cep.evalScript("ConsolePR.listEffects()", function (response) {
-            var fresh;
-            try {
-                fresh = JSON.parse(response);
-            } catch (e) {
-                fresh = { error: response };
-            }
-            if (fresh.error) {
-                showStatus("Não foi possível listar os efeitos: " + fresh.error);
-                return;
-            }
-            var changed = JSON.stringify(fresh) !== JSON.stringify(effects);
-            effects = fresh;
-            if (changed) {
-                try {
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(fresh));
-                } catch (e) { /* cache is only an optimization */ }
-                render();
-            }
-        });
+            list = JSON.parse(response);
+        } catch (e) {
+            list = { error: response };
+        }
+        if (list.error) {
+            showStatus("Não foi possível listar os efeitos: " + list.error);
+            return;
+        }
+        effects = list;
+        render();
     }
+
+    cep.addEventListener("com.consolepr.effectsCurrent", function (event) {
+        showEffects(typeof event.data === "string" ? event.data : JSON.stringify(event.data));
+    });
+
+    // The background extension normally sends the list right after opening.
+    setTimeout(function () {
+        if (!effects.video.length && !effects.audio.length) {
+            cep.evalScript("ConsolePR.listEffects()", showEffects);
+        }
+    }, EFFECTS_FALLBACK_MS);
 
     function showHotkeyMessage(message, isError) {
         hotkeyMessage.textContent = message;
@@ -388,7 +385,7 @@
         window.cep.util.openURLInDefaultBrowser(event.currentTarget.href);
     });
     hotkeyDefault.addEventListener("click", function () {
-        saveHotkey(ConsoleHotkey.DEFAULT);
+        saveHotkey(defaultHotkey);
     });
 
     cep.addEventListener("com.consolepr.hotkeyCurrent", function (event) {
@@ -476,9 +473,9 @@
     // Second hotkey press closes the window.
     cep.addEventListener("com.consolepr.toggle", close);
 
+    hotkeyDefault.textContent = "Restaurar padrão (" + ConsoleHotkey.label(defaultHotkey) + ")";
     setAccent(accent);
     render();
-    loadEffects();
     search.focus();
     dispatch("com.consolepr.opened");
 })();

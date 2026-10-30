@@ -1,6 +1,5 @@
 // ExtendScript side of ConsolePR. ES3 only: no JSON object, no Array.map, etc.
-// Effects are listed and applied through the QE DOM, which is the only scripting
-// API in Premiere that can add an effect to a clip.
+// Both hosts expose the same two calls: listEffects() and applyEffect(kind, name).
 
 var ConsolePR = (function () {
     function quote(s) {
@@ -41,6 +40,93 @@ var ConsolePR = (function () {
             ',"count":' + (count || 0) + "}";
     }
 
+    function afterEffects() {
+        function isAudio(effect) {
+            return /^[a\u00e1]udio$/i.test(effect.category);
+        }
+
+        function matchName(kind, name) {
+            for (var i = 0; i < app.effects.length; i++) {
+                var effect = app.effects[i];
+                if (effect.displayName === name && effect.category && isAudio(effect) === (kind === "audio")) {
+                    return effect.matchName;
+                }
+            }
+            return null;
+        }
+
+        return {
+            listEffects: function () {
+                try {
+                    var video = [];
+                    var audio = [];
+                    var seen = {};
+                    for (var i = 0; i < app.effects.length; i++) {
+                        var effect = app.effects[i];
+                        // Effects without a category are internal and hidden from the Effects menu.
+                        if (effect.category && !seen["$" + effect.displayName]) {
+                            seen["$" + effect.displayName] = true;
+                            (isAudio(effect) ? audio : video).push(effect.displayName);
+                        }
+                    }
+                    return '{"video":' + toJsonArray(video) + ',"audio":' + toJsonArray(audio) + "}";
+                } catch (e) {
+                    return '{"error":' + quote(e.toString()) + "}";
+                }
+            },
+
+            applyEffect: function (kind, name) {
+                var grouped = false;
+                try {
+                    var comp = app.project.activeItem;
+                    if (!(comp instanceof CompItem)) {
+                        return result(false, "Abra uma composição.");
+                    }
+                    var layers = comp.selectedLayers;
+                    if (!layers.length) {
+                        return result(false, "Selecione uma camada na composição.");
+                    }
+                    var match = matchName(kind, name);
+                    if (!match) {
+                        return result(false, "Efeito não encontrado: " + name);
+                    }
+                    app.beginUndoGroup("ConsolePR: " + name);
+                    grouped = true;
+                    var applied = 0;
+                    var locked = 0;
+                    for (var i = 0; i < layers.length; i++) {
+                        var parade = layers[i].property("ADBE Effect Parade");
+                        // canAddProperty alone accepts audio effects on layers without sound.
+                        var suitable = kind === "audio" ? layers[i].hasAudio : layers[i].hasVideo;
+                        if (layers[i].locked) {
+                            locked++;
+                        } else if (suitable && parade && parade.canAddProperty(match)) {
+                            parade.addProperty(match);
+                            applied++;
+                        }
+                    }
+                    if (applied > 0) {
+                        return result(true, "", applied);
+                    }
+                    if (locked === layers.length) {
+                        return result(false, "A camada selecionada está bloqueada.");
+                    }
+                    return result(false, kind === "audio"
+                        ? "Efeito de áudio: selecione uma camada com áudio."
+                        : "Efeito de vídeo: selecione uma camada com imagem.");
+                } catch (e) {
+                    return result(false, e.toString());
+                } finally {
+                    if (grouped) {
+                        app.endUndoGroup();
+                    }
+                }
+            }
+        };
+    }
+
+    // Premiere lists and applies through the QE DOM, the only scripting API
+    // there that can add an effect to a clip.
     function findQeItem(qeTrack, clip) {
         var startTicks = String(clip.start.ticks);
         var endTicks = String(clip.end.ticks);
@@ -87,6 +173,11 @@ var ConsolePR = (function () {
             }
         }
         return total;
+    }
+
+    // app.effects exists only in After Effects.
+    if (typeof app.effects !== "undefined") {
+        return afterEffects();
     }
 
     return {

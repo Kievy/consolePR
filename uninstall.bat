@@ -12,11 +12,11 @@ if not exist "%TARGET%" (
 
 rmdir /s /q "%TARGET%"
 if exist "%TARGET%" (
-    echo A remocao falhou. Feche o Premiere e tente de novo.
+    echo A remocao falhou. Feche o Premiere e o After Effects e tente de novo.
     goto end
 )
 if exist "%APPDATA%\ConsolePR" rmdir /s /q "%APPDATA%\ConsolePR"
-echo ConsolePR removido. Reinicie o Premiere.
+echo ConsolePR removido. Reinicie o Premiere e o After Effects.
 
 :end
 echo.

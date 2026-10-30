@@ -8,6 +8,7 @@
   <ExecutionEnvironment>
     <HostList>
       <Host Name="PPRO" Version="[22.0,99.9]" />
+      <Host Name="AEFT" Version="[22.0,99.9]" />
     </HostList>
     <LocaleList>
       <Locale Code="All" />
@@ -44,6 +45,7 @@
       <DispatchInfo>
         <Resources>
           <MainPath>./background/index.html</MainPath>
+          <ScriptPath>./jsx/host.jsx</ScriptPath>
           <CEFCommandLine>
             <Parameter>--enable-nodejs</Parameter>
             <Parameter>--mixed-context</Parameter>

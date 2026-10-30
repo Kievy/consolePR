@@ -18,7 +18,8 @@ for /l %%v in (9,1,22) do (
 )
 
 echo ConsolePR instalado em %TARGET%
-echo Reinicie o Premiere e use Ctrl+Espaco com a timeline em foco.
+echo Reinicie o Premiere e o After Effects.
+echo Atalho no Premiere: Ctrl+Espaco. No After Effects: Ctrl+Shift+Espaco.
 goto end
 
 :missing
@@ -27,7 +28,7 @@ echo Se abriu este arquivo de dentro do ZIP, extraia o ZIP primeiro.
 goto end
 
 :failed
-echo A instalacao falhou. Feche o Premiere e tente de novo.
+echo A instalacao falhou. Feche o Premiere e o After Effects e tente de novo.
 
 :end
 echo.

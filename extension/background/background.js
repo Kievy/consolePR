@@ -1,5 +1,5 @@
 // Starts the hotkey helper and turns each hotkey press into opening or closing
-// the palette.
+// the palette. Premiere and After Effects each run their own copy of this.
 (function () {
     var cep = window.__adobe_cep__;
     var childProcess = require("child_process");
@@ -8,7 +8,9 @@
     var os = require("os");
 
     var PALETTE_ID = "com.consolepr.palette";
-    var DEFAULT_HOTKEY = "Ctrl+Space";
+    var APP_ID = JSON.parse(cep.getHostEnvironment()).appId;
+    // CEPHtmlEngine's parent process is not always the host, so find it by name.
+    var HOST_PROCESSES = { PPRO: "Adobe Premiere", AEFT: "AfterFX" };
     var ACCENT_PATTERN = /^#[0-9A-F]{6}$/i;
 
     var extensionDir = path.normalize(
@@ -21,8 +23,10 @@
 
     var paletteOpen = false;
     var helper = null;
-    var currentHotkey = DEFAULT_HOTKEY;
-    var config = {};
+    var effectsJson = null;
+    var currentHotkey = ConsoleHotkey.defaultFor(APP_ID);
+    // Each host keeps its own hotkey; the accent color is shared.
+    var hotkeySetting = ConsoleHotkey.settingFor(APP_ID);
 
     function log(message) {
         try {
@@ -38,8 +42,11 @@
         }
     }
 
-    function saveConfig() {
+    // Reads before writing because the other host may have saved its own settings.
+    function saveSetting(name, value) {
         try {
+            var config = readConfig();
+            config[name] = value;
             fs.mkdirSync(configDir, { recursive: true });
             fs.writeFileSync(configFile, JSON.stringify(config, null, 2) + os.EOL);
         } catch (e) {
@@ -52,7 +59,7 @@
         cep.dispatchEvent({
             type: type,
             scope: "APPLICATION",
-            appId: JSON.parse(cep.getHostEnvironment()).appId,
+            appId: APP_ID,
             extensionId: cep.getExtensionId(),
             data: data || ""
         });
@@ -77,7 +84,7 @@
         var script = path.join(extensionDir, "helper", "hotkey.ps1");
         helper = childProcess.spawn("powershell.exe", [
             "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-            "-File", script, "-Hotkey", currentHotkey
+            "-File", script, "-Hotkey", currentHotkey, "-HostProcess", HOST_PROCESSES[APP_ID]
         ], { windowsHide: true });
 
         var buffered = "";
@@ -91,8 +98,7 @@
                     onHotkey();
                 } else if (text.indexOf("hotkey-ok ") === 0) {
                     currentHotkey = text.substring("hotkey-ok ".length);
-                    config.hotkey = currentHotkey;
-                    saveConfig();
+                    saveSetting(hotkeySetting, currentHotkey);
                     dispatch("com.consolepr.hotkeySaved", currentHotkey);
                 } else if (text.indexOf("hotkey-error ") === 0) {
                     dispatch("com.consolepr.hotkeyRejected", text.substring("hotkey-error ".length));
@@ -113,6 +119,29 @@
         });
     }
 
+    // Reading the effects blocks the host for seconds in After Effects, and also
+    // delays CEP events, so it happens once and the palette gets the result.
+    function loadEffects(done) {
+        cep.evalScript("ConsolePR.listEffects()", function (response) {
+            try {
+                if (!JSON.parse(response).error) {
+                    effectsJson = response;
+                }
+            } catch (e) {
+                log("could not list effects: " + response);
+            }
+            if (done) {
+                done();
+            }
+        });
+    }
+
+    function sendEffects() {
+        if (effectsJson) {
+            dispatch("com.consolepr.effectsCurrent", effectsJson);
+        }
+    }
+
     function tellHelper(command) {
         if (helper) {
             helper.stdin.write(command + "\n");
@@ -123,8 +152,14 @@
         paletteOpen = true;
         tellHelper("present");
         dispatch("com.consolepr.hotkeyCurrent", currentHotkey);
-        if (ACCENT_PATTERN.test(config.accent)) {
-            dispatch("com.consolepr.accentCurrent", config.accent);
+        var accent = readConfig().accent;
+        if (ACCENT_PATTERN.test(accent)) {
+            dispatch("com.consolepr.accentCurrent", accent);
+        }
+        if (effectsJson) {
+            sendEffects();
+        } else {
+            loadEffects(sendEffects);
         }
     });
     cep.addEventListener("com.consolepr.closed", function () {
@@ -139,8 +174,7 @@
     });
     cep.addEventListener("com.consolepr.setAccent", function (event) {
         if (ACCENT_PATTERN.test(event.data)) {
-            config.accent = event.data;
-            saveConfig();
+            saveSetting("accent", event.data);
         }
     });
     cep.addEventListener("com.consolepr.setHotkey", function (event) {
@@ -151,8 +185,8 @@
         }
     });
 
-    log("background started, extension at " + extensionDir);
-    config = readConfig();
-    currentHotkey = config.hotkey || DEFAULT_HOTKEY;
+    log(APP_ID + " background started, extension at " + extensionDir);
+    currentHotkey = readConfig()[hotkeySetting] || currentHotkey;
     startHelper();
+    loadEffects();
 })();

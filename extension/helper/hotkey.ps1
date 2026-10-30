@@ -1,16 +1,17 @@
-# Registers the ConsolePR hotkey only while Premiere is the foreground app, so
-# the same key combination keeps working normally in every other program.
+# Registers the ConsolePR hotkey only while the host app (Premiere or After
+# Effects) is in the foreground, so the same key combination keeps working
+# normally in every other program, including the other host.
 #
 # stdout: prints "hotkey" on each press.
 #         "hotkey-ok <combo>" or "hotkey-error <combo>" answers "set-hotkey".
 # stdin:  "present" removes the title bar from the palette window, centers it
-#         over Premiere and moves keyboard focus into its search box.
+#         over the host and moves keyboard focus into its search box.
 #         "set-hotkey <combo>" switches to a new hotkey, keeping the old one if
 #         the new one can't be registered.
 #         "suspend-hotkey" and "resume-hotkey" release the hotkey while a new
 #         combination is being recorded, so it can reach the palette.
-# Exits when stdin closes (the extension went away) or Premiere exits.
-param([string]$Hotkey = "Ctrl+Space")
+# Exits when stdin closes (the extension went away) or the host exits.
+param([string]$Hotkey = "Ctrl+Space", [string]$HostProcess)
 
 $ErrorActionPreference = "Stop"
 
@@ -25,6 +26,8 @@ using System.Threading;
 public static class ConsolePrHotkey {
     const int WM_HOTKEY = 0x0312;
     const uint PM_REMOVE = 1;
+    const uint GA_ROOT = 2;
+    const int SW_SHOW = 5;
     const uint MOD_NOREPEAT = 0x4000;
     const int GWL_STYLE = -16;
     const int GWL_EXSTYLE = -20;
@@ -53,10 +56,12 @@ public static class ConsolePrHotkey {
     [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
     [DllImport("user32.dll")] static extern bool PeekMessage(out MSG msg, IntPtr hWnd, uint min, uint max, uint remove);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hWnd, uint flags);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc cb, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int max);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int index);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
@@ -68,24 +73,20 @@ public static class ConsolePrHotkey {
     [DllImport("gdi32.dll")] static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
-    static bool IsHostProcess(uint pid) {
-        try {
-            string name = Process.GetProcessById((int)pid).ProcessName;
-            return name.StartsWith("Adobe Premiere") || name.Equals("CEPHtmlEngine", StringComparison.OrdinalIgnoreCase);
-        } catch (Exception) { return false; }
-    }
+    static uint hostPid;
 
+    // Panels and the palette are child windows run by CEPHtmlEngine, so the top
+    // of the window chain tells which host the focus really belongs to.
     static bool ForegroundIsHost() {
         uint pid;
-        GetWindowThreadProcessId(GetForegroundWindow(), out pid);
-        return pid != 0 && IsHostProcess(pid);
+        GetWindowThreadProcessId(GetAncestor(GetForegroundWindow(), GA_ROOT), out pid);
+        return pid == hostPid;
     }
 
-    static bool PremiereRunning() {
-        foreach (Process p in Process.GetProcesses()) {
-            if (p.ProcessName.StartsWith("Adobe Premiere")) return true;
-        }
-        return false;
+    static bool HostRunning() {
+        try {
+            return !Process.GetProcessById((int)hostPid).HasExited;
+        } catch (Exception) { return false; }
     }
 
     static void ParseHotkey(string text, out uint modifiers, out uint vk) {
@@ -121,12 +122,11 @@ public static class ConsolePrHotkey {
     static IntPtr FindWindowByTitle(string title) {
         IntPtr result = IntPtr.Zero;
         EnumWindows(delegate (IntPtr hWnd, IntPtr unused) {
-            if (!IsWindowVisible(hWnd)) return true;
             StringBuilder text = new StringBuilder(64);
             GetWindowText(hWnd, text, text.Capacity);
             uint pid;
             GetWindowThreadProcessId(hWnd, out pid);
-            if (text.ToString() == title && IsHostProcess(pid)) {
+            if (text.ToString() == title && pid == hostPid) {
                 result = hWnd;
                 return false;
             }
@@ -135,11 +135,10 @@ public static class ConsolePrHotkey {
         return result;
     }
 
-    static IntPtr FindPremiereWindow() {
-        foreach (Process p in Process.GetProcesses()) {
-            if (p.ProcessName.StartsWith("Adobe Premiere") && p.MainWindowHandle != IntPtr.Zero) return p.MainWindowHandle;
-        }
-        return IntPtr.Zero;
+    static IntPtr FindHostWindow() {
+        try {
+            return Process.GetProcessById((int)hostPid).MainWindowHandle;
+        } catch (Exception) { return IntPtr.Zero; }
     }
 
     static IntPtr FindWebView(IntPtr palette) {
@@ -197,8 +196,8 @@ public static class ConsolePrHotkey {
             height = viewRect.Bottom - viewRect.Top;
         }
         int x = win.Left, y = win.Top;
-        IntPtr premiere = FindPremiereWindow();
-        if (premiere != IntPtr.Zero && GetWindowRect(premiere, out host)) {
+        IntPtr hostWindow = FindHostWindow();
+        if (hostWindow != IntPtr.Zero && GetWindowRect(hostWindow, out host)) {
             x = host.Left + (host.Right - host.Left - width) / 2;
             y = host.Top + (host.Bottom - host.Top) / 4;
         }
@@ -221,7 +220,15 @@ public static class ConsolePrHotkey {
         return size;
     }
 
-    public static void Run(string hotkey) {
+    static uint FindHost(string prefix) {
+        foreach (Process p in Process.GetProcesses()) {
+            if (p.ProcessName.StartsWith(prefix)) return (uint)p.Id;
+        }
+        throw new ArgumentException("Programa nao encontrado: " + prefix);
+    }
+
+    public static void Run(string hotkey, string hostProcess) {
+        hostPid = FindHost(hostProcess);
         uint modifiers, vk;
         ParseHotkey(hotkey, out modifiers, out vk);
 
@@ -300,6 +307,8 @@ public static class ConsolePrHotkey {
                 presentTicks--;
                 IntPtr palette = FindWindowByTitle("ConsolePR");
                 if (palette != IntPtr.Zero) {
+                    // After Effects creates the window hidden; Premiere shows it.
+                    if (!IsWindowVisible(palette)) ShowWindow(palette, SW_SHOW);
                     if (!styled) {
                         Style(palette);
                         styled = true;
@@ -311,7 +320,7 @@ public static class ConsolePrHotkey {
 
             if (++ticks >= 100) {
                 ticks = 0;
-                if (!PremiereRunning()) break;
+                if (!HostRunning()) break;
             }
             Thread.Sleep(25);
         }
@@ -320,4 +329,4 @@ public static class ConsolePrHotkey {
 }
 "@
 
-[ConsolePrHotkey]::Run($Hotkey)
+[ConsolePrHotkey]::Run($Hotkey, $HostProcess)
