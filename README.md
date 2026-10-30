@@ -20,12 +20,6 @@ Você precisa de Windows e do Premiere Pro instalado. Não é preciso instalar m
 3. Dê dois cliques em **`install.bat`** e aguarde a mensagem de conclusão. Se o Windows mostrar um aviso de segurança, escolha **Mais informações > Executar assim mesmo**.
 4. Abra o Premiere e aperte `Ctrl+Espaço` com ele em primeiro plano.
 
-Se preferir o terminal, rode na pasta do projeto:
-
-```bash
-powershell -ExecutionPolicy Bypass -File install.ps1
-```
-
 O instalador copia a extensão para `%APPDATA%\Adobe\CEP\extensions\com.consolepr`, então a pasta baixada pode ser apagada depois. Para atualizar, baixe a versão nova e repita os passos.
 
 A extensão não é assinada, então o instalador também liga o `PlayerDebugMode` do CEP no registro do usuário. Sem isso, o Premiere não a carrega.
@@ -37,11 +31,7 @@ A extensão não é assinada, então o instalador também liga o `PlayerDebugMod
 
 ### Desinstalar
 
-Com o Premiere fechado, rode na pasta do projeto:
-
-```bash
-powershell -ExecutionPolicy Bypass -File uninstall.ps1
-```
+Com o Premiere fechado, dê dois cliques em **`uninstall.bat`**. Ele remove a extensão e o atalho salvo, e mantém o `PlayerDebugMode` ligado porque outras extensões podem precisar dele.
 
 ## Uso
 
