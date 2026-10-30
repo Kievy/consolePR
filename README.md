@@ -2,6 +2,8 @@
 
 Busca rápida de efeitos para o Adobe Premiere Pro, no estilo do FX Console: aperte um atalho, digite parte do nome e o efeito é aplicado aos clipes selecionados.
 
+![Janela do ConsolePR filtrando efeitos de vídeo e de áudio enquanto o nome é digitado](docs/demo.gif)
+
 Testado no Premiere Pro 2026 (26.5.2) no Windows. O atalho global só existe no Windows. O manifesto aceita Premiere 22 ou superior, mas versões anteriores à 26.5 não foram testadas.
 
 ## Instalação
