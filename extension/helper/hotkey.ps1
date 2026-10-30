@@ -2,8 +2,13 @@
 # the same key combination keeps working normally in every other program.
 #
 # stdout: prints "hotkey" on each press.
+#         "hotkey-ok <combo>" or "hotkey-error <combo>" answers "set-hotkey".
 # stdin:  "present" removes the title bar from the palette window, centers it
 #         over Premiere and moves keyboard focus into its search box.
+#         "set-hotkey <combo>" switches to a new hotkey, keeping the old one if
+#         the new one can't be registered.
+#         "suspend-hotkey" and "resume-hotkey" release the hotkey while a new
+#         combination is being recorded, so it can reach the palette.
 # Exits when stdin closes (the extension went away) or Premiere exits.
 param([string]$Hotkey = "Ctrl+Space")
 
@@ -96,6 +101,17 @@ public static class ConsolePrHotkey {
             else throw new ArgumentException("Tecla desconhecida no atalho: " + raw);
         }
         if (vk == 0) throw new ArgumentException("Atalho sem tecla principal: " + text);
+    }
+
+    static bool TryParseHotkey(string text, out uint modifiers, out uint vk) {
+        try {
+            ParseHotkey(text, out modifiers, out vk);
+            return true;
+        } catch (Exception) {
+            modifiers = 0;
+            vk = 0;
+            return false;
+        }
     }
 
     static IntPtr FindWindowByTitle(string title) {
@@ -201,12 +217,13 @@ public static class ConsolePrHotkey {
 
         bool registered = false;
         bool warned = false;
+        bool suspended = false;
         int ticks = 0;
         int presentTicks = 0;
         bool styled = false;
         MSG msg;
         while (!stdinClosed) {
-            bool wantRegistered = ForegroundIsHost();
+            bool wantRegistered = !suspended && ForegroundIsHost();
             if (wantRegistered && !registered) {
                 registered = RegisterHotKey(IntPtr.Zero, HOTKEY_ID, modifiers, vk);
                 if (!registered && !warned) {
@@ -231,6 +248,28 @@ public static class ConsolePrHotkey {
                 if (command == "present") {
                     presentTicks = PRESENT_TICKS;
                     styled = false;
+                } else if (command == "suspend-hotkey") {
+                    suspended = true;
+                } else if (command == "resume-hotkey") {
+                    suspended = false;
+                } else if (command.StartsWith("set-hotkey ")) {
+                    string candidate = command.Substring("set-hotkey ".Length);
+                    suspended = false;
+                    warned = false;
+                    if (registered) UnregisterHotKey(IntPtr.Zero, HOTKEY_ID);
+                    registered = false;
+                    uint newModifiers, newVk;
+                    bool valid = TryParseHotkey(candidate, out newModifiers, out newVk);
+                    if (valid && RegisterHotKey(IntPtr.Zero, HOTKEY_ID, newModifiers, newVk)) {
+                        registered = true;
+                        hotkey = candidate;
+                        modifiers = newModifiers;
+                        vk = newVk;
+                        Console.Out.WriteLine("hotkey-ok " + candidate);
+                    } else {
+                        Console.Out.WriteLine("hotkey-error " + candidate);
+                    }
+                    Console.Out.Flush();
                 }
             }
             // Premiere takes focus back shortly after opening the window, so

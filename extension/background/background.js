@@ -14,9 +14,13 @@
         decodeURI(cep.getSystemPath("extension")).replace(/^file:\/+/, "")
     );
     var logFile = path.join(os.tmpdir(), "consolepr.log");
+    // Outside the extension folder so that reinstalling keeps the user's hotkey.
+    var configDir = path.join(process.env.APPDATA, "ConsolePR");
+    var configFile = path.join(configDir, "config.json");
 
     var paletteOpen = false;
     var helper = null;
+    var currentHotkey = DEFAULT_HOTKEY;
 
     function log(message) {
         try {
@@ -26,21 +30,30 @@
 
     function readHotkey() {
         try {
-            var config = JSON.parse(fs.readFileSync(path.join(extensionDir, "config.json"), "utf8"));
+            var config = JSON.parse(fs.readFileSync(configFile, "utf8"));
             return config.hotkey || DEFAULT_HOTKEY;
         } catch (e) {
             return DEFAULT_HOTKEY;
         }
     }
 
-    function dispatch(type) {
+    function saveHotkey(hotkey) {
+        try {
+            fs.mkdirSync(configDir, { recursive: true });
+            fs.writeFileSync(configFile, JSON.stringify({ hotkey: hotkey }, null, 2) + os.EOL);
+        } catch (e) {
+            log("could not save hotkey: " + e.message);
+        }
+    }
+
+    function dispatch(type, data) {
         // CEP silently drops events without the real appId and extensionId.
         cep.dispatchEvent({
             type: type,
             scope: "APPLICATION",
             appId: JSON.parse(cep.getHostEnvironment()).appId,
             extensionId: cep.getExtensionId(),
-            data: ""
+            data: data || ""
         });
     }
 
@@ -63,7 +76,7 @@
         var script = path.join(extensionDir, "helper", "hotkey.ps1");
         helper = childProcess.spawn("powershell.exe", [
             "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-            "-File", script, "-Hotkey", readHotkey()
+            "-File", script, "-Hotkey", currentHotkey
         ], { windowsHide: true });
 
         var buffered = "";
@@ -72,10 +85,17 @@
             var lines = buffered.split(/\r?\n/);
             buffered = lines.pop();
             lines.forEach(function (line) {
-                if (line.trim() === "hotkey") {
+                var text = line.trim();
+                if (text === "hotkey") {
                     onHotkey();
-                } else if (line.trim()) {
-                    log("helper: " + line.trim());
+                } else if (text.indexOf("hotkey-ok ") === 0) {
+                    currentHotkey = text.substring("hotkey-ok ".length);
+                    saveHotkey(currentHotkey);
+                    dispatch("com.consolepr.hotkeySaved", currentHotkey);
+                } else if (text.indexOf("hotkey-error ") === 0) {
+                    dispatch("com.consolepr.hotkeyRejected", text.substring("hotkey-error ".length));
+                } else if (text) {
+                    log("helper: " + text);
                 }
             });
         });
@@ -100,11 +120,27 @@
     cep.addEventListener("com.consolepr.opened", function () {
         paletteOpen = true;
         tellHelper("present");
+        dispatch("com.consolepr.hotkeyCurrent", currentHotkey);
     });
     cep.addEventListener("com.consolepr.closed", function () {
         paletteOpen = false;
+        tellHelper("resume-hotkey");
+    });
+    cep.addEventListener("com.consolepr.suspendHotkey", function () {
+        tellHelper("suspend-hotkey");
+    });
+    cep.addEventListener("com.consolepr.resumeHotkey", function () {
+        tellHelper("resume-hotkey");
+    });
+    cep.addEventListener("com.consolepr.setHotkey", function (event) {
+        if (helper) {
+            tellHelper("set-hotkey " + event.data);
+        } else {
+            dispatch("com.consolepr.hotkeyRejected", event.data);
+        }
     });
 
     log("background started, extension at " + extensionDir);
+    currentHotkey = readHotkey();
     startHelper();
 })();

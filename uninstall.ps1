@@ -2,6 +2,7 @@
 $target = Join-Path $env:APPDATA "Adobe\CEP\extensions\com.consolepr"
 if (Test-Path $target) {
     Remove-Item $target -Recurse -Force
+    Remove-Item (Join-Path $env:APPDATA "ConsolePR") -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host "ConsolePR removido. Reinicie o Premiere."
 } else {
     Write-Host "ConsolePR nao esta instalado."

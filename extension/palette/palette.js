@@ -11,20 +11,29 @@
     var search = document.getElementById("search");
     var list = document.getElementById("list");
     var status = document.getElementById("status");
+    var settingsButton = document.getElementById("settings-button");
+    var settingsTitle = document.getElementById("settings-title");
+    var settings = document.getElementById("settings");
+    var hotkeyField = document.getElementById("hotkey-field");
+    var hotkeyDefault = document.getElementById("hotkey-default");
+    var hotkeyMessage = document.getElementById("hotkey-message");
 
     var effects = { video: [], audio: [] };
     var rows = [];
     var selected = 0;
     var applying = false;
+    var currentHotkey = ConsoleHotkey.DEFAULT;
+    var capturing = false;
+    var saveTimer = null;
 
-    function dispatch(type) {
+    function dispatch(type, data) {
         // CEP silently drops events without the real appId and extensionId.
         cep.dispatchEvent({
             type: type,
             scope: "APPLICATION",
             appId: JSON.parse(cep.getHostEnvironment()).appId,
             extensionId: cep.getExtensionId(),
-            data: ""
+            data: data || ""
         });
     }
 
@@ -163,6 +172,109 @@
         });
     }
 
+    function showHotkeyMessage(message, isError) {
+        hotkeyMessage.textContent = message;
+        hotkeyMessage.classList.toggle("error", !!isError);
+    }
+
+    function showCurrentHotkey() {
+        hotkeyField.textContent = ConsoleHotkey.label(currentHotkey);
+        hotkeyField.classList.remove("capturing");
+    }
+
+    function startCapture() {
+        capturing = true;
+        dispatch("com.consolepr.suspendHotkey");
+        hotkeyField.textContent = "Pressione a nova combinação...";
+        hotkeyField.classList.add("capturing");
+        showHotkeyMessage("Esc cancela.");
+    }
+
+    function stopCapture() {
+        capturing = false;
+        showCurrentHotkey();
+    }
+
+    function saveHotkey(hotkey) {
+        capturing = false;
+        hotkeyField.textContent = ConsoleHotkey.label(hotkey);
+        hotkeyField.classList.remove("capturing");
+        showHotkeyMessage("Salvando...");
+        dispatch("com.consolepr.setHotkey", hotkey);
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () {
+            showCurrentHotkey();
+            showHotkeyMessage("Não foi possível salvar o atalho.", true);
+        }, 3000);
+    }
+
+    function onCaptureKey(event) {
+        if (event.keyCode === 27) {
+            dispatch("com.consolepr.resumeHotkey");
+            stopCapture();
+            showHotkeyMessage("");
+            return;
+        }
+        var result = ConsoleHotkey.fromKeyEvent(event);
+        if (!result) {
+            return;
+        }
+        if (result.error) {
+            showHotkeyMessage(result.error, true);
+        } else {
+            saveHotkey(result.hotkey);
+        }
+    }
+
+    function showSettings(visible) {
+        if (capturing) {
+            dispatch("com.consolepr.resumeHotkey");
+            stopCapture();
+        }
+        settings.hidden = !visible;
+        settingsTitle.hidden = !visible;
+        list.hidden = visible;
+        search.hidden = visible;
+        settingsButton.classList.toggle("active", visible);
+        showHotkeyMessage("");
+        showStatus("");
+        if (visible) {
+            showCurrentHotkey();
+            hotkeyField.focus();
+        } else {
+            search.focus();
+        }
+    }
+
+    settingsButton.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+    });
+    settingsButton.addEventListener("click", function () {
+        showSettings(settings.hidden);
+    });
+    hotkeyField.addEventListener("click", startCapture);
+    hotkeyDefault.addEventListener("click", function () {
+        saveHotkey(ConsoleHotkey.DEFAULT);
+    });
+
+    cep.addEventListener("com.consolepr.hotkeyCurrent", function (event) {
+        currentHotkey = event.data;
+        if (!capturing) {
+            showCurrentHotkey();
+        }
+    });
+    cep.addEventListener("com.consolepr.hotkeySaved", function (event) {
+        clearTimeout(saveTimer);
+        currentHotkey = event.data;
+        showCurrentHotkey();
+        showHotkeyMessage("Atalho salvo: " + ConsoleHotkey.label(currentHotkey));
+    });
+    cep.addEventListener("com.consolepr.hotkeyRejected", function (event) {
+        clearTimeout(saveTimer);
+        showCurrentHotkey();
+        showHotkeyMessage(ConsoleHotkey.label(event.data) + " já está em uso por outro programa.", true);
+    });
+
     // Clicking a row or the scrollbar must not take the caret out of the search box.
     list.addEventListener("mousedown", function (event) {
         event.preventDefault();
@@ -174,6 +286,18 @@
     });
 
     document.addEventListener("keydown", function (event) {
+        if (capturing) {
+            onCaptureKey(event);
+            event.preventDefault();
+            return;
+        }
+        if (!settings.hidden) {
+            if (event.keyCode === 27) {
+                showSettings(false);
+                event.preventDefault();
+            }
+            return;
+        }
         switch (event.key) {
             case "ArrowDown":
                 select(selected + 1, true);
@@ -206,7 +330,9 @@
     });
 
     window.addEventListener("focus", function () {
-        search.focus();
+        if (settings.hidden) {
+            search.focus();
+        }
     });
 
     // Second hotkey press closes the window.

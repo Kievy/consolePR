@@ -9,10 +9,22 @@
   <header>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
     <input id="search" type="text" spellcheck="false" autocomplete="off" autofocus>
+    <span id="settings-title" hidden>Configurações</span>
+    <button id="settings-button" type="button" title="Configurações" aria-label="Configurações">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/><circle cx="12" cy="12" r="6.5"/></svg>
+    </button>
   </header>
   <main id="list" role="listbox"></main>
+  <section id="settings" hidden>
+    <label for="hotkey-field">Atalho para abrir o ConsolePR</label>
+    <button id="hotkey-field" type="button"></button>
+    <p id="hotkey-message" role="status"></p>
+    <p class="hint">Clique no campo e pressione a nova combinação. Use Ctrl ou Alt com uma letra, número ou Espaço, ou uma tecla F. Com o Premiere em foco, o atalho tem prioridade sobre os comandos dele que usam a mesma combinação.</p>
+    <button id="hotkey-default" type="button">Restaurar padrão (Ctrl + Espaço)</button>
+  </section>
   <footer id="status" hidden></footer>
   <script src="search.js"></script>
+  <script src="hotkey.js"></script>
   <script src="palette.js"></script>
 </body>
 </html>

@@ -53,7 +53,12 @@ A janela também abre em `Window > Extensions > ConsolePR`.
 
 ## Trocar o atalho
 
-Edite `hotkey` em `%APPDATA%\Adobe\CEP\extensions\com.consolepr\config.json` e reinicie o Premiere. Exemplos: `Ctrl+Space`, `Ctrl+Shift+F`, `Alt+F2`.
+1. Abra a janela e clique na engrenagem ao lado da busca.
+2. Clique no campo do atalho e pressione a nova combinação. Ela passa a valer na hora, sem reiniciar o Premiere.
+
+Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para `Ctrl+Espaço`.
+
+A escolha fica em `%APPDATA%\ConsolePR\config.json` e é mantida ao reinstalar ou atualizar.
 
 O atalho só fica registrado enquanto o Premiere está em primeiro plano, então a mesma combinação continua funcionando nos outros programas. Enquanto isso, ele tem prioridade sobre um atalho igual configurado no próprio Premiere.
 
@@ -73,5 +78,5 @@ Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
 ## Testes
 
 ```bash
-node --test test/search.test.js
+node --test test/search.test.js test/hotkey.test.js
 ```
