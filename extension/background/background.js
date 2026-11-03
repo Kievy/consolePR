@@ -8,7 +8,9 @@
     var os = require("os");
 
     var PALETTE_ID = "com.consolepr.palette";
-    var APP_ID = JSON.parse(cep.getHostEnvironment()).appId;
+    var host = JSON.parse(cep.getHostEnvironment());
+    var APP_ID = host.appId;
+    ConsoleI18n.setLocale(host.appLocale);
     // CEPHtmlEngine's parent process is not always the host, so find it by name.
     var HOST_PROCESSES = { PPRO: "Adobe Premiere", AEFT: "AfterFX" };
     var ACCENT_PATTERN = /^#[0-9A-F]{6}$/i;
@@ -164,7 +166,7 @@
             if (size > 0 && size === lastSize) {
                 done(null);
             } else if (Date.now() > deadline) {
-                done("O programa não gerou o frame a tempo.");
+                done(ConsoleI18n.t("frame.timeout"));
             } else {
                 lastSize = size;
                 setTimeout(check, FRAME_POLL_MS);
@@ -175,7 +177,7 @@
     function writeJpeg(pngFile, target, done) {
         var image = new Image();
         image.onerror = function () {
-            done("Não foi possível converter o frame para JPEG.");
+            done(ConsoleI18n.t("frame.jpegFailed"));
         };
         image.onload = function () {
             var canvas = document.createElement("canvas");
@@ -197,7 +199,7 @@
     function deliverFrame(request, pngFile, done) {
         if (request.mode === "clipboard") {
             if (!helper) {
-                done("O processo do atalho não está em execução.");
+                done(ConsoleI18n.t("frame.helperDown"));
                 return;
             }
             clipboardDone = done;
@@ -239,10 +241,10 @@
             try {
                 outcome = JSON.parse(response);
             } catch (e) {
-                outcome = { ok: false, message: "Erro ao capturar: " + response };
+                outcome = { ok: false, message: ConsoleI18n.t("frame.captureFailed", { detail: response }) };
             }
             if (!outcome.ok) {
-                finish(outcome.message);
+                finish(ConsoleI18n.hostText(outcome));
                 return;
             }
             restore = outcome.restore || null;

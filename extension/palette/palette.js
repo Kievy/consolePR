@@ -1,12 +1,18 @@
 (function () {
     var cep = window.__adobe_cep__;
+    try {
+        ConsoleI18n.setLocale(JSON.parse(cep.getHostEnvironment()).appLocale);
+    } catch (e) {
+        ConsoleI18n.setLocale("");
+    }
+    ConsoleI18n.apply(document);
     var EFFECTS_FALLBACK_MS = 3000;
     var FRAME_DONE_MS = 1200;
     var FOCUS_GRACE_MS = 1000; // Premiere briefly takes focus while the window opens
     var openedAt = Date.now();
     var GROUPS = [
-        { kind: "video", label: "Efeitos de vídeo" },
-        { kind: "audio", label: "Efeitos de áudio" }
+        { kind: "video", labelKey: "group.video" },
+        { kind: "audio", labelKey: "group.audio" }
     ];
 
     var search = document.getElementById("search");
@@ -78,7 +84,7 @@
             try {
                 done(JSON.parse(response));
             } catch (e) {
-                done({ ok: false, message: "Erro: " + response });
+                done({ ok: false, message: ConsoleI18n.t("status.error", { detail: response }) });
             }
         });
     }
@@ -92,13 +98,13 @@
     }
 
     function requestFrame(request) {
-        showStatus("Capturando o frame...", true);
+        showStatus(ConsoleI18n.t("frame.capturing"), true);
         dispatch("com.consolepr.captureFrame", JSON.stringify(request));
     }
 
     function askWhereToSave(mode, frameName) {
         var result = window.cep.fs.showSaveDialogEx(
-            "Salvar print do frame",
+            ConsoleI18n.t("frame.saveTitle"),
             saveFolder,
             [mode === "jpeg" ? "jpg" : "png", mode === "jpeg" ? "jpeg" : "png"],
             ConsoleFrame.fileNameFor(frameName, mode === "jpeg" ? "jpg" : "png")
@@ -114,7 +120,7 @@
         showFrameMenu(false);
         hostCall("ConsolePR.frameInfo()", function (info) {
             if (!info.ok) {
-                finishFraming(info.message);
+                finishFraming(ConsoleI18n.hostText(info));
             } else if (mode === "clipboard") {
                 requestFrame({ mode: mode });
             } else {
@@ -155,7 +161,9 @@
             finishFraming(outcome.error);
             return;
         }
-        showStatus(outcome.path ? "Salvo em " + outcome.path : "Copiado para a área de transferência", true);
+        showStatus(outcome.path
+            ? ConsoleI18n.t("frame.saved", { path: outcome.path })
+            : ConsoleI18n.t("frame.copied"), true);
         setTimeout(close, FRAME_DONE_MS);
     });
 
@@ -200,7 +208,7 @@
             var header = document.createElement("div");
             header.className = "group";
             var label = document.createElement("span");
-            label.textContent = group.label;
+            label.textContent = ConsoleI18n.t(group.labelKey);
             var badge = document.createElement("span");
             badge.className = "badge";
             badge.textContent = names.length;
@@ -232,7 +240,7 @@
         if (!rows.length) {
             var empty = document.createElement("div");
             empty.className = "empty";
-            empty.textContent = "Nenhum efeito encontrado";
+            empty.textContent = ConsoleI18n.t("empty");
             list.appendChild(empty);
         }
         select(0, true);
@@ -251,12 +259,12 @@
             try {
                 outcome = JSON.parse(response);
             } catch (e) {
-                outcome = { ok: false, message: "Erro ao aplicar: " + response };
+                outcome = { ok: false, message: ConsoleI18n.t("apply.failed", { detail: response }) };
             }
             if (outcome.ok) {
                 close();
             } else {
-                showStatus(outcome.message);
+                showStatus(ConsoleI18n.hostText(outcome));
                 search.focus();
             }
         });
@@ -270,7 +278,7 @@
             list = { error: response };
         }
         if (list.error) {
-            showStatus("Não foi possível listar os efeitos: " + list.error);
+            showStatus(ConsoleI18n.t("effects.listFailed", { detail: list.error }));
             return;
         }
         effects = list;
@@ -301,9 +309,9 @@
     function startCapture() {
         capturing = true;
         dispatch("com.consolepr.suspendHotkey");
-        hotkeyField.textContent = "Pressione a nova combinação...";
+        hotkeyField.textContent = ConsoleI18n.t("hotkey.press");
         hotkeyField.classList.add("capturing");
-        showHotkeyMessage("Esc cancela.");
+        showHotkeyMessage(ConsoleI18n.t("hotkey.cancel"));
     }
 
     function stopCapture() {
@@ -315,12 +323,12 @@
         capturing = false;
         hotkeyField.textContent = ConsoleHotkey.label(hotkey);
         hotkeyField.classList.remove("capturing");
-        showHotkeyMessage("Salvando...");
+        showHotkeyMessage(ConsoleI18n.t("hotkey.saving"));
         dispatch("com.consolepr.setHotkey", hotkey);
         clearTimeout(saveTimer);
         saveTimer = setTimeout(function () {
             showCurrentHotkey();
-            showHotkeyMessage("Não foi possível salvar o atalho.", true);
+            showHotkeyMessage(ConsoleI18n.t("hotkey.saveFailed"), true);
         }, 3000);
     }
 
@@ -336,7 +344,7 @@
             return;
         }
         if (result.error) {
-            showHotkeyMessage(result.error, true);
+            showHotkeyMessage(ConsoleI18n.t(result.error), true);
         } else {
             saveHotkey(result.hotkey);
         }
@@ -408,7 +416,7 @@
             paintPicker();
             saveAccent();
         } else {
-            showAccentError("Use um código como #C64BF2.");
+            showAccentError(ConsoleI18n.t("accent.invalid"));
         }
     });
     accentHex.addEventListener("blur", function () {
@@ -498,12 +506,12 @@
         clearTimeout(saveTimer);
         currentHotkey = event.data;
         showCurrentHotkey();
-        showHotkeyMessage("Atalho salvo: " + ConsoleHotkey.label(currentHotkey));
+        showHotkeyMessage(ConsoleI18n.t("hotkey.saved", { label: ConsoleHotkey.label(currentHotkey) }));
     });
     cep.addEventListener("com.consolepr.hotkeyRejected", function (event) {
         clearTimeout(saveTimer);
         showCurrentHotkey();
-        showHotkeyMessage(ConsoleHotkey.label(event.data) + " já está em uso por outro programa.", true);
+        showHotkeyMessage(ConsoleI18n.t("hotkey.inUse", { label: ConsoleHotkey.label(event.data) }), true);
     });
 
     // Clicking a row or the scrollbar must not take the caret out of the search box.
@@ -586,7 +594,7 @@
     // Second hotkey press closes the window.
     cep.addEventListener("com.consolepr.toggle", close);
 
-    hotkeyDefault.textContent = "Restaurar padrão (" + ConsoleHotkey.label(ConsoleHotkey.DEFAULT) + ")";
+    hotkeyDefault.textContent = ConsoleI18n.t("hotkey.restore", { label: ConsoleHotkey.label(ConsoleHotkey.DEFAULT) });
     setAccent(accent);
     render();
     search.focus();

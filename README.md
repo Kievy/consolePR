@@ -1,10 +1,14 @@
 # ConsolePR
 
+[English](README.en.md)
+
 Busca rápida de efeitos para o Adobe Premiere Pro e o After Effects, no estilo do FX Console: aperte um atalho, digite parte do nome e o efeito é aplicado aos clipes ou camadas selecionados.
 
 ![Janela do ConsolePR filtrando efeitos de vídeo e de áudio enquanto o nome é digitado, e abrindo o menu de print do frame](docs/demo.gif)
 
 Testado no Premiere Pro 2026 (26.5.2) e no After Effects 2026 (26.5) no Windows. O atalho global só existe no Windows. O manifesto aceita as versões 22 ou superiores dos dois programas, mas versões anteriores às testadas não foram verificadas.
+
+A janela segue o idioma do Premiere ou do After Effects: português quando o programa está em português e inglês nos demais. As mensagens de `install.bat` e `uninstall.bat` seguem o idioma do Windows da mesma forma.
 
 ## Instalação
 
@@ -75,6 +79,7 @@ Na mesma tela da engrenagem, digite um código hexadecimal (como `#C64BF2`) ou c
 | `extension/background` | Extensão invisível que inicia com o programa e controla o processo do atalho |
 | `extension/helper/hotkey.ps1` | Registra o atalho, tira a barra de título da janela, centraliza e dá foco ao campo de busca |
 | `extension/palette` | Janela de busca |
+| `extension/palette/i18n.js` | Textos da janela em português e inglês |
 | `extension/jsx/host.jsx` | Lista e aplica os efeitos: API QE no Premiere e `app.effects` no After Effects |
 
 A API QE do Premiere não é documentada pela Adobe e pode mudar em versões futuras.
@@ -84,5 +89,5 @@ Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
 ## Testes
 
 ```bash
-node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js
+node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js test/i18n.test.js
 ```
