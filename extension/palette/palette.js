@@ -53,7 +53,10 @@
     var capturing = false;
     var saveTimer = null;
     var framing = false;
+    // What the keys get (and the preview shows), and where each slider sits.
+    // Sliders are independent: moving one never moves another.
     var ease = { in: 33, out: 33 };
+    var sliders = { in: 33, out: 33, both: 33 };
     var previewMode = "bezier";
     var saveFolder = "";
     var accent = ConsoleColor.DEFAULT;
@@ -469,14 +472,11 @@
     });
 
     function showEase() {
-        ease.in = ConsoleKeyframes.clampPercent(ease.in);
-        ease.out = ConsoleKeyframes.clampPercent(ease.out);
-        var values = { in: ease.in, out: ease.out, both: ConsoleKeyframes.bothValue(ease.in, ease.out) };
         Object.keys(easeInputs).forEach(function (side) {
-            easeInputs[side].range.value = values[side];
-            easeInputs[side].range.style.setProperty("--fill", values[side] + "%");
+            easeInputs[side].range.value = sliders[side];
+            easeInputs[side].range.style.setProperty("--fill", sliders[side] + "%");
             if (document.activeElement !== easeInputs[side].number) {
-                easeInputs[side].number.value = values[side];
+                easeInputs[side].number.value = sliders[side];
             }
         });
         Array.prototype.forEach.call(keysView.querySelectorAll(".interp-button"), function (button) {
@@ -493,6 +493,7 @@
 
     function setEaseValue(side, value) {
         var percent = ConsoleKeyframes.clampPercent(value);
+        sliders[side] = percent;
         if (side === "both") {
             ease.in = percent;
             ease.out = percent;
@@ -516,7 +517,7 @@
     }
 
     function applyEase(side) {
-        var value = side === "out" ? ease.out : ease.in;
+        var value = sliders[side];
         hostCall("ConsolePR.setEase(" + JSON.stringify(side) + "," + value + ")", keysResult);
     }
 
@@ -533,8 +534,11 @@
                 return;
             }
             if (state.count) {
-                ease.in = Math.round(state.easeIn);
-                ease.out = Math.round(state.easeOut);
+                ease.in = ConsoleKeyframes.clampPercent(state.easeIn);
+                ease.out = ConsoleKeyframes.clampPercent(state.easeOut);
+                sliders.in = ease.in;
+                sliders.out = ease.out;
+                sliders.both = ConsoleKeyframes.bothValue(ease.in, ease.out);
                 previewMode = state.mode;
                 showStatus(ConsoleI18n.t(state.count === 1 ? "keys.selectedOne" : "keys.selected", { count: state.count }), true);
             } else {
