@@ -95,7 +95,8 @@ body.settings-open #search-icon { display: none; }
 }
 
 #settings-button,
-#frame-button {
+#frame-button,
+#keys-button {
   flex: none;
   width: 42px;
   height: 42px;
@@ -110,13 +111,181 @@ body.settings-open #search-icon { display: none; }
 
 #settings-button:hover,
 #frame-button:hover,
-#frame-button:focus {
+#frame-button:focus,
+#keys-button:hover,
+#keys-button:focus {
   border-color: var(--line);
   color: #fff;
   outline: 0;
 }
 
 #frame-button { margin-left: 8px; }
+#keys-button { margin-left: 8px; }
+
+/* Only After Effects exposes keyframe ease to scripts */
+body:not(.host-AEFT) #keys-button { display: none; }
+
+#keys-button.active {
+  border-color: var(--line-strong);
+  background: radial-gradient(circle at 30% 100%, rgba(var(--accent-rgb), var(--accent-glow)), rgba(var(--accent-rgb), 0.08) 75%);
+  color: #fff;
+}
+
+body.settings-open #keys-button,
+body.keys-open #frame-button { display: none; }
+body.keys-open #search-icon { display: none; }
+
+#keys {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 14px 22px 12px;
+}
+
+.ease-row {
+  display: flex;
+  align-items: center;
+  height: 50px;
+}
+
+.ease-row > span { flex: none; color: var(--muted); }
+
+.ease-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  margin: 0 14px;
+  border-radius: 2px;
+  outline: 0;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--fill, 0%), var(--line-strong) var(--fill, 0%));
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.ease-row input[type="range"]::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ddd;
+  border-radius: 50%;
+  background: var(--window-dark);
+  -webkit-appearance: none;
+}
+
+.ease-row input[type="range"]:focus::-webkit-slider-thumb { border-color: #fff; }
+
+.ease-value {
+  flex: none;
+  width: 64px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: 0;
+  background: #0b0b0d;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  text-align: center;
+  user-select: text;
+}
+
+.ease-value:focus { border-color: var(--line-strong); }
+.ease-value::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.interp-button {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  margin-left: 12px;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.interp-button:hover,
+.interp-button:focus {
+  border-color: rgba(255, 255, 255, 0.35);
+  outline: 0;
+}
+
+.interp-button.current {
+  background: radial-gradient(circle at 30% 100%, rgba(var(--accent-rgb), var(--accent-glow)), rgba(var(--accent-rgb), 0.08) 75%);
+  color: #fff;
+}
+
+#ease-preview {
+  display: flex;
+  align-items: center;
+  flex: none;
+  height: 132px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+#ease-graph {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  overflow: visible;
+}
+
+.ease-axis {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+#ease-curve {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#ease-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  margin: 0 12px 0 26px;
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+
+#ease-dot {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px 2px rgba(var(--accent-rgb), 0.6);
+  animation: ease-move 1.8s var(--ease-timing, linear) infinite;
+}
+
+/* The ease plays from 0% to 75%; the rest is a pause before the next loop. */
+@keyframes ease-move {
+  0% { left: 0; }
+  75% { left: 100%; }
+  100% { left: 100%; }
+}
+
+#keys-hint {
+  flex: none;
+  margin: 10px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
 
 #frame-button[aria-expanded="true"] {
   border-color: var(--line-strong);

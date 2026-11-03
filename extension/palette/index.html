@@ -10,6 +10,7 @@
     <span id="search-icon" data-icon="search"></span>
     <input id="search" type="text" spellcheck="false" autocomplete="off" placeholder="Buscar efeito..." data-i18n-placeholder="search.placeholder" autofocus>
     <span id="settings-title" data-i18n="settings.title" hidden>Configurações</span>
+    <button id="keys-button" type="button" title="Suavização de keyframes" aria-label="Suavização de keyframes" data-i18n-title="keys.button" data-icon="keyframe"></button>
     <button id="frame-button" type="button" title="Print do frame atual" aria-label="Print do frame atual" data-i18n-title="frame.title" aria-haspopup="menu" aria-expanded="false" data-icon="camera"></button>
     <button id="settings-button" type="button" title="Configurações" aria-label="Configurações" data-i18n-title="settings.title" data-icon="gear"></button>
     <div id="frame-menu" role="menu" hidden>
@@ -40,6 +41,31 @@
     </div>
     <p class="credit"><span data-i18n="credit.by">Feito por</span> <a id="credit-link" href="https://www.instagram.com/kievydsg/">@kievydsg</a></p>
   </section>
+  <section id="keys" hidden>
+    <div class="ease-row">
+      <span data-icon="easeIn" title="Entrada: suavização na chegada aos keyframes selecionados" data-i18n-title="keys.easeIn"></span>
+      <input id="ease-in" type="range" min="0" max="100" step="1" aria-label="Suavização de entrada" data-i18n-aria="keys.easeIn">
+      <input id="ease-in-value" class="ease-value" type="number" min="0" max="100" aria-label="Valor da entrada" data-i18n-aria="keys.easeInValue">
+      <button type="button" class="interp-button" data-interp="hold" data-icon="hold" title="Clique: muda a interpolação dos keyframes selecionados para HOLD&#10;Alt+Clique: muda só a entrada (IN) para HOLD, segurando o valor até o keyframe&#10;Shift+Clique: muda só a saída (OUT) para HOLD" aria-label="Interpolação HOLD" data-i18n-title="keys.hold" data-i18n-aria="keys.holdName"></button>
+    </div>
+    <div class="ease-row">
+      <span data-icon="easeOut" title="Saída: suavização na partida dos keyframes selecionados" data-i18n-title="keys.easeOut"></span>
+      <input id="ease-out" type="range" min="0" max="100" step="1" aria-label="Suavização de saída" data-i18n-aria="keys.easeOut">
+      <input id="ease-out-value" class="ease-value" type="number" min="0" max="100" aria-label="Valor da saída" data-i18n-aria="keys.easeOutValue">
+      <button type="button" class="interp-button" data-interp="linear" data-icon="linear" title="Clique: muda a interpolação dos keyframes selecionados para LINEAR&#10;Alt+Clique: muda só a entrada (IN) para LINEAR&#10;Shift+Clique: muda só a saída (OUT) para LINEAR" aria-label="Interpolação LINEAR" data-i18n-title="keys.linear" data-i18n-aria="keys.linearName"></button>
+    </div>
+    <div class="ease-row">
+      <span data-icon="easeBoth" title="Entrada e saída juntas" data-i18n-title="keys.easeBoth"></span>
+      <input id="ease-both" type="range" min="0" max="100" step="1" aria-label="Suavização de entrada e saída" data-i18n-aria="keys.easeBoth">
+      <input id="ease-both-value" class="ease-value" type="number" min="0" max="100" aria-label="Valor de entrada e saída" data-i18n-aria="keys.easeBothValue">
+      <button type="button" class="interp-button" data-interp="bezier" data-icon="bezier" title="Clique: muda a interpolação dos keyframes selecionados para BEZIER&#10;Alt+Clique: muda só a entrada (IN) para BEZIER&#10;Shift+Clique: muda só a saída (OUT) para BEZIER" aria-label="Interpolação BEZIER" data-i18n-title="keys.bezier" data-i18n-aria="keys.bezierName"></button>
+    </div>
+    <div id="ease-preview" aria-hidden="true">
+      <svg id="ease-graph" viewBox="-6 -6 112 112"><path class="ease-axis" d="M0 0 V100 H100"></path><path id="ease-curve" d=""></path></svg>
+      <div id="ease-track"><div id="ease-dot"></div></div>
+    </div>
+    <p id="keys-hint" data-i18n="keys.hint">Selecione keyframes na timeline. Os sliders aplicam ao soltar.</p>
+  </section>
   <footer id="status" hidden></footer>
   <script src="i18n.js"></script>
   <script src="icons.js"></script>
@@ -47,6 +73,7 @@
   <script src="hotkey.js"></script>
   <script src="color.js"></script>
   <script src="frame.js"></script>
+  <script src="keyframes.js"></script>
   <script src="palette.js"></script>
 </body>
 </html>

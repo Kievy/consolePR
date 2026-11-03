@@ -55,6 +55,23 @@ Clique no botão da câmera, ao lado da engrenagem, para capturar o frame onde e
 - **Copiar para a área de transferência:** é só colar em outro programa.
 - **Salvar como PNG ou JPEG:** escolha a pasta e o nome na janela de salvar. O ConsolePR lembra a última pasta usada.
 
+## Suavização de keyframes (só no After Effects)
+
+O botão do keyframe, à esquerda da câmera, abre os controles de suavização dos keyframes selecionados na timeline:
+
+| Controle | O que faz |
+| --- | --- |
+| `<` | Suavização de entrada (influência de 0 a 100) |
+| `>` | Suavização de saída |
+| `><` | Entrada e saída juntas |
+| Quadrado | Interpolação HOLD |
+| Losango | Interpolação LINEAR |
+| Círculo | Interpolação BEZIER |
+
+Nos botões de interpolação, clique para mudar os dois lados, `Alt+Clique` para mudar só a entrada (IN) e `Shift+Clique` só a saída (OUT). Como no After Effects o HOLD sempre vale para o trecho depois de um keyframe, o HOLD na entrada é aplicado na saída do keyframe anterior, e o primeiro keyframe de cada propriedade não tem entrada para segurar. Os sliders aplicam ao soltar, e cada ajuste vira um único passo no `Ctrl+Z`. Abaixo deles, o preview mostra a curva e uma animação de como o movimento vai ficar.
+
+O Premiere não permite controlar a suavização por script, por isso o botão não aparece lá.
+
 ## Trocar o atalho
 
 1. Abra a janela e clique na engrenagem ao lado da busca.
@@ -89,5 +106,5 @@ Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
 ## Testes
 
 ```bash
-node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js test/i18n.test.js
+node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js test/i18n.test.js test/keyframes.test.js
 ```

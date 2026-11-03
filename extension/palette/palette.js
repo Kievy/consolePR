@@ -25,6 +25,15 @@
     var hotkeyDefault = document.getElementById("hotkey-default");
     var hotkeyMessage = document.getElementById("hotkey-message");
     var frameButton = document.getElementById("frame-button");
+    var keysButton = document.getElementById("keys-button");
+    var keysView = document.getElementById("keys");
+    var easeInputs = {
+        in: { range: document.getElementById("ease-in"), number: document.getElementById("ease-in-value") },
+        out: { range: document.getElementById("ease-out"), number: document.getElementById("ease-out-value") },
+        both: { range: document.getElementById("ease-both"), number: document.getElementById("ease-both-value") }
+    };
+    var easeCurve = document.getElementById("ease-curve");
+    var easeDot = document.getElementById("ease-dot");
     var frameMenu = document.getElementById("frame-menu");
     var accentControl = document.getElementById("accent-control");
     var accentSwatch = document.getElementById("accent-swatch");
@@ -44,6 +53,8 @@
     var capturing = false;
     var saveTimer = null;
     var framing = false;
+    var ease = { in: 33, out: 33 };
+    var previewMode = "bezier";
     var saveFolder = "";
     var accent = ConsoleColor.DEFAULT;
     var accentHsv = ConsoleColor.hexToHsv(accent);
@@ -457,7 +468,142 @@
         setAccent(event.data);
     });
 
+    function showEase() {
+        ease.in = ConsoleKeyframes.clampPercent(ease.in);
+        ease.out = ConsoleKeyframes.clampPercent(ease.out);
+        var values = { in: ease.in, out: ease.out, both: ConsoleKeyframes.bothValue(ease.in, ease.out) };
+        Object.keys(easeInputs).forEach(function (side) {
+            easeInputs[side].range.value = values[side];
+            easeInputs[side].range.style.setProperty("--fill", values[side] + "%");
+            if (document.activeElement !== easeInputs[side].number) {
+                easeInputs[side].number.value = values[side];
+            }
+        });
+        Array.prototype.forEach.call(keysView.querySelectorAll(".interp-button"), function (button) {
+            button.classList.toggle("current", button.getAttribute("data-interp") === previewMode);
+        });
+        // The preview shows one key leaving (its out) and the next arriving (its in).
+        var look = ConsoleKeyframes.preview(previewMode, ease.out, ease.in);
+        easeCurve.setAttribute("d", look.path);
+        easeDot.style.setProperty("--ease-timing", look.timing);
+        easeDot.style.animation = "none";
+        void easeDot.offsetWidth;
+        easeDot.style.animation = "";
+    }
+
+    function setEaseValue(side, value) {
+        var percent = ConsoleKeyframes.clampPercent(value);
+        if (side === "both") {
+            ease.in = percent;
+            ease.out = percent;
+        } else {
+            ease[side] = percent;
+        }
+        previewMode = "bezier";
+        showEase();
+    }
+
+    function keysResult(outcome) {
+        if (!outcome.ok) {
+            showStatus(ConsoleI18n.hostText(outcome));
+            return;
+        }
+        var text = ConsoleI18n.t(outcome.count === 1 ? "keys.appliedOne" : "keys.applied", { count: outcome.count });
+        if (outcome.failed) {
+            text += " " + ConsoleI18n.t("keys.rejected", { count: outcome.failed });
+        }
+        showStatus(text, true);
+    }
+
+    function applyEase(side) {
+        var value = side === "out" ? ease.out : ease.in;
+        hostCall("ConsolePR.setEase(" + JSON.stringify(side) + "," + value + ")", keysResult);
+    }
+
+    function applyInterpolation(type, side) {
+        previewMode = type;
+        showEase();
+        hostCall("ConsolePR.setInterpolation(" + JSON.stringify(type) + "," + JSON.stringify(side) + ")", keysResult);
+    }
+
+    function loadKeyState() {
+        hostCall("ConsolePR.keyframeState()", function (state) {
+            if (!state.ok) {
+                showStatus(ConsoleI18n.hostText(state));
+                return;
+            }
+            if (state.count) {
+                ease.in = Math.round(state.easeIn);
+                ease.out = Math.round(state.easeOut);
+                previewMode = state.mode;
+                showStatus(ConsoleI18n.t(state.count === 1 ? "keys.selectedOne" : "keys.selected", { count: state.count }), true);
+            } else {
+                showStatus(ConsoleI18n.hostText({ code: "selectKeys" }));
+            }
+            showEase();
+        });
+    }
+
+    function showKeys(visible) {
+        if (visible) {
+            showSettings(false);
+        }
+        showFrameMenu(false);
+        keysView.hidden = !visible;
+        settingsTitle.hidden = !visible && settings.hidden;
+        settingsTitle.textContent = ConsoleI18n.t(visible ? "keys.title" : "settings.title");
+        list.hidden = visible || !settings.hidden;
+        search.hidden = visible || !settings.hidden;
+        document.body.classList.toggle("keys-open", visible);
+        keysButton.classList.toggle("active", visible);
+        showStatus("");
+        if (visible) {
+            showEase();
+            loadKeyState();
+            easeInputs.both.range.focus();
+        } else if (settings.hidden) {
+            search.focus();
+        }
+    }
+
+    Object.keys(easeInputs).forEach(function (side) {
+        var inputs = easeInputs[side];
+        inputs.range.addEventListener("input", function () {
+            setEaseValue(side, inputs.range.value);
+        });
+        // Applying on release keeps the undo history to one step per adjustment.
+        inputs.range.addEventListener("change", function () {
+            applyEase(side);
+        });
+        inputs.number.addEventListener("change", function () {
+            setEaseValue(side, inputs.number.value);
+            applyEase(side);
+        });
+        inputs.number.addEventListener("keydown", function (event) {
+            if (event.keyCode === 13) {
+                inputs.number.blur();
+            }
+        });
+    });
+
+    Array.prototype.forEach.call(keysView.querySelectorAll(".interp-button"), function (button) {
+        button.addEventListener("click", function (event) {
+            var side = event.altKey ? "in" : event.shiftKey ? "out" : "both";
+            applyInterpolation(button.getAttribute("data-interp"), side);
+        });
+    });
+
+    keysButton.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+    });
+    keysButton.addEventListener("click", function () {
+        showKeys(keysView.hidden);
+    });
+
     function showSettings(visible) {
+        if (visible && !keysView.hidden) {
+            showKeys(false);
+        }
         if (capturing) {
             dispatch("com.consolepr.resumeHotkey");
             stopCapture();
@@ -543,6 +689,13 @@
             }
             return;
         }
+        if (!keysView.hidden) {
+            if (event.keyCode === 27) {
+                showKeys(false);
+                event.preventDefault();
+            }
+            return;
+        }
         if (!settings.hidden) {
             if (event.keyCode === 27) {
                 if (accentPicker.hidden) {
@@ -586,7 +739,7 @@
     });
 
     window.addEventListener("focus", function () {
-        if (settings.hidden && frameMenu.hidden) {
+        if (settings.hidden && frameMenu.hidden && keysView.hidden) {
             search.focus();
         }
     });
@@ -595,6 +748,7 @@
     cep.addEventListener("com.consolepr.toggle", close);
 
     hotkeyDefault.textContent = ConsoleI18n.t("hotkey.restore", { label: ConsoleHotkey.label(ConsoleHotkey.DEFAULT) });
+    document.body.classList.add("host-" + JSON.parse(cep.getHostEnvironment()).appId);
     setAccent(accent);
     render();
     search.focus();

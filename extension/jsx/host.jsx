@@ -3,6 +3,8 @@
 // frameInfo() and captureFrame(basePath), which writes basePath + ".png" at full
 // quality. When its answer has a "restore" list, call finishCapture with those values
 // once the file is ready.
+// After Effects also has keyframeState(), setEase(side, percent) and
+// setInterpolation(type, side) for the selected keyframes; side is "in", "out" or "both".
 
 var ConsolePR = (function () {
     function quote(s) {
@@ -63,6 +65,79 @@ var ConsolePR = (function () {
             return factor[0] === 1 && factor[1] === 1;
         }
 
+        var INTERPOLATIONS = {
+            hold: KeyframeInterpolationType.HOLD,
+            linear: KeyframeInterpolationType.LINEAR,
+            bezier: KeyframeInterpolationType.BEZIER
+        };
+
+        // Loose equality on purpose: the key's type and the constant are not always
+        // the same kind of value, so === can fail for equal types.
+        function interpolationName(type) {
+            return type == KeyframeInterpolationType.HOLD ? "hold"
+                : type == KeyframeInterpolationType.LINEAR ? "linear" : "bezier";
+        }
+
+        // Every selected key, as {property, index}. Null when no comp is open.
+        function selectedKeys() {
+            var comp = app.project.activeItem;
+            if (!(comp instanceof CompItem)) {
+                return null;
+            }
+            var keys = [];
+            var properties = comp.selectedProperties;
+            for (var i = 0; i < properties.length; i++) {
+                var property = properties[i];
+                if (property.propertyType === PropertyType.PROPERTY && property.numKeys > 0) {
+                    var indexes = property.selectedKeys;
+                    for (var j = 0; j < indexes.length; j++) {
+                        keys.push({ property: property, index: indexes[j] });
+                    }
+                }
+            }
+            return keys;
+        }
+
+        // The panel words the outcome in the host language.
+        function keysResult(changed, failed) {
+            if (!changed) {
+                return fail(failed ? "keysRejected" : "selectKeys");
+            }
+            return '{"ok":true,"count":' + changed + ',"failed":' + failed + "}";
+        }
+
+        // Runs change(property, index) on every selected key as one undo step.
+        function eachSelectedKey(undoName, change) {
+            var keys = selectedKeys();
+            if (!keys) {
+                return fail("openComp");
+            }
+            var changed = 0;
+            var failed = 0;
+            app.beginUndoGroup(undoName);
+            try {
+                for (var i = 0; i < keys.length; i++) {
+                    try {
+                        change(keys[i].property, keys[i].index);
+                        changed++;
+                    } catch (e) {
+                        failed++;
+                    }
+                }
+            } finally {
+                app.endUndoGroup();
+            }
+            return keysResult(changed, failed);
+        }
+
+        function eases(current, influence, replace) {
+            var list = [];
+            for (var d = 0; d < current.length; d++) {
+                list.push(replace ? new KeyframeEase(0, influence) : current[d]);
+            }
+            return list;
+        }
+
         function isAudio(effect) {
             return /^[a\u00e1]udio$/i.test(effect.category);
         }
@@ -98,6 +173,73 @@ var ConsolePR = (function () {
                     return '{"video":' + toJsonArray(video) + ',"audio":' + toJsonArray(audio) + "}";
                 } catch (e) {
                     return '{"error":' + quote(e.toString()) + "}";
+                }
+            },
+
+            keyframeState: function () {
+                try {
+                    var keys = selectedKeys();
+                    if (!keys) {
+                        return fail("openComp");
+                    }
+                    if (!keys.length) {
+                        return '{"ok":true,"count":0}';
+                    }
+                    var property = keys[0].property;
+                    var index = keys[0].index;
+                    return '{"ok":true,"count":' + keys.length +
+                        ',"easeIn":' + property.keyInTemporalEase(index)[0].influence +
+                        ',"easeOut":' + property.keyOutTemporalEase(index)[0].influence +
+                        ',"mode":' + quote(interpolationName(property.keyOutInterpolationType(index))) + "}";
+                } catch (e) {
+                    return result(false, e.toString());
+                }
+            },
+
+            // Easing a side makes it Bezier with speed 0, like Easy Ease.
+            setEase: function (side, percent) {
+                try {
+                    var influence = Math.max(0.1, Math.min(100, Number(percent)));
+                    var easeIn = side !== "out";
+                    var easeOut = side !== "in";
+                    return eachSelectedKey("ConsolePR: suavizar keyframes", function (property, index) {
+                        var inType = easeIn ? KeyframeInterpolationType.BEZIER : property.keyInInterpolationType(index);
+                        var outType = easeOut ? KeyframeInterpolationType.BEZIER : property.keyOutInterpolationType(index);
+                        property.setInterpolationTypeAtKey(index, inType, outType);
+                        try {
+                            property.setTemporalContinuousAtKey(index, false);
+                            property.setTemporalAutoBezierAtKey(index, false);
+                        } catch (e) { /* not every property has these */ }
+                        property.setTemporalEaseAtKey(index,
+                            eases(property.keyInTemporalEase(index), influence, easeIn),
+                            eases(property.keyOutTemporalEase(index), influence, easeOut));
+                    });
+                } catch (e) {
+                    return result(false, e.toString());
+                }
+            },
+
+            setInterpolation: function (type, side) {
+                try {
+                    var wanted = INTERPOLATIONS[type];
+                    return eachSelectedKey("ConsolePR: interpolação " + type.toUpperCase(), function (property, index) {
+                        // After Effects turns an incoming HOLD into LINEAR: a hold always
+                        // belongs to the segment after a key. Holding the arrival at this
+                        // key therefore means holding the previous key's outgoing side.
+                        if (wanted === KeyframeInterpolationType.HOLD && side === "in") {
+                            if (index === 1) {
+                                throw new Error("no previous key");
+                            }
+                            property.setInterpolationTypeAtKey(index - 1,
+                                property.keyInInterpolationType(index - 1), KeyframeInterpolationType.HOLD);
+                            return;
+                        }
+                        property.setInterpolationTypeAtKey(index,
+                            side !== "out" ? wanted : property.keyInInterpolationType(index),
+                            side !== "in" ? wanted : property.keyOutInterpolationType(index));
+                    });
+                } catch (e) {
+                    return result(false, e.toString());
                 }
             },
 

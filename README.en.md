@@ -55,6 +55,23 @@ Click the camera button, next to the gear, to capture the frame under the playhe
 - **Copy to clipboard:** paste it into another program.
 - **Save as PNG or JPEG:** choose the folder and the name in the save dialog. ConsolePR remembers the last folder used.
 
+## Keyframe easing (After Effects only)
+
+The keyframe button, to the left of the camera, opens easing controls for the keyframes selected on the timeline:
+
+| Control | What it does |
+| --- | --- |
+| `<` | Ease in (influence from 0 to 100) |
+| `>` | Ease out |
+| `><` | Ease in and out together |
+| Square | HOLD interpolation |
+| Diamond | LINEAR interpolation |
+| Circle | BEZIER interpolation |
+
+On the interpolation buttons, click to change both sides, `Alt+Click` to change only IN and `Shift+Click` to change only OUT. In After Effects a HOLD always belongs to the segment after a keyframe, so an IN hold is applied to the previous keyframe's OUT side, and the first keyframe of each property has no incoming side to hold. Sliders apply when released, and each adjustment is a single `Ctrl+Z` step. Below them, the preview shows the curve and an animation of how the motion will look.
+
+Premiere does not expose easing to scripts, so the button does not appear there.
+
 ## Changing the shortcut
 
 1. Open the window and click the gear next to the search field.
@@ -89,5 +106,5 @@ Shortcut problems are recorded in `%TEMP%\consolepr.log`.
 ## Tests
 
 ```bash
-node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js test/i18n.test.js
+node --test test/search.test.js test/hotkey.test.js test/color.test.js test/frame.test.js test/icons.test.js test/i18n.test.js test/keyframes.test.js
 ```
