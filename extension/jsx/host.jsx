@@ -59,9 +59,12 @@ var ConsolePR = (function () {
             return /^[a\u00e1]udio$/i.test(effect.category);
         }
 
+        // Every read of app.effects rebuilds the whole list (about 9 ms for 447
+        // effects), so read it once and loop over the copy.
         function matchName(kind, name) {
-            for (var i = 0; i < app.effects.length; i++) {
-                var effect = app.effects[i];
+            var effects = app.effects;
+            for (var i = 0; i < effects.length; i++) {
+                var effect = effects[i];
                 if (effect.displayName === name && effect.category && isAudio(effect) === (kind === "audio")) {
                     return effect.matchName;
                 }
@@ -75,8 +78,9 @@ var ConsolePR = (function () {
                     var video = [];
                     var audio = [];
                     var seen = {};
-                    for (var i = 0; i < app.effects.length; i++) {
-                        var effect = app.effects[i];
+                    var effects = app.effects;
+                    for (var i = 0; i < effects.length; i++) {
+                        var effect = effects[i];
                         // Effects without a category are internal and hidden from the Effects menu.
                         if (effect.category && !seen["$" + effect.displayName]) {
                             seen["$" + effect.displayName] = true;
