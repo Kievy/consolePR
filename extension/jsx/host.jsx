@@ -47,6 +47,14 @@ var ConsolePR = (function () {
             ',"count":' + (count || 0) + "}";
     }
 
+    // Known failures travel as codes. The panel translates them, so the message
+    // matches the host language even when $.locale does not.
+    function fail(code, detail) {
+        return '{"ok":false,"code":' + quote(code) +
+            ',"detail":' + quote(detail || "") +
+            ',"message":"","count":0}';
+    }
+
     function afterEffects() {
         var UNDO_COMMAND = 16;
 
@@ -97,7 +105,7 @@ var ConsolePR = (function () {
                 try {
                     var comp = app.project.activeItem;
                     if (!(comp instanceof CompItem)) {
-                        return result(false, "Abra uma composição.");
+                        return fail("openComp");
                     }
                     return frameResult(comp.name + " " + timeToCurrentFormat(comp.time, comp.frameRate));
                 } catch (e) {
@@ -109,7 +117,7 @@ var ConsolePR = (function () {
                 try {
                     var comp = app.project.activeItem;
                     if (!(comp instanceof CompItem)) {
-                        return result(false, "Abra uma composição.");
+                        return fail("openComp");
                     }
                     var file = new File(basePath + ".png");
                     // The frame follows the comp's resolution, as chosen in the viewer.
@@ -150,15 +158,15 @@ var ConsolePR = (function () {
                 try {
                     var comp = app.project.activeItem;
                     if (!(comp instanceof CompItem)) {
-                        return result(false, "Abra uma composição.");
+                        return fail("openComp");
                     }
                     var layers = comp.selectedLayers;
                     if (!layers.length) {
-                        return result(false, "Selecione uma camada na composição.");
+                        return fail("selectLayer");
                     }
                     var match = matchName(kind, name);
                     if (!match) {
-                        return result(false, "Efeito não encontrado: " + name);
+                        return fail("effectMissing", name);
                     }
                     app.beginUndoGroup("ConsolePR: " + name);
                     grouped = true;
@@ -179,11 +187,9 @@ var ConsolePR = (function () {
                         return result(true, "", applied);
                     }
                     if (locked === layers.length) {
-                        return result(false, "A camada selecionada está bloqueada.");
+                        return fail("layerLocked");
                     }
-                    return result(false, kind === "audio"
-                        ? "Efeito de áudio: selecione uma camada com áudio."
-                        : "Efeito de vídeo: selecione uma camada com imagem.");
+                    return fail(kind === "audio" ? "needAudioLayer" : "needVideoLayer");
                 } catch (e) {
                     return result(false, e.toString());
                 } finally {
@@ -265,7 +271,7 @@ var ConsolePR = (function () {
             try {
                 var seq = app.project.activeSequence;
                 if (!seq) {
-                    return result(false, "Abra uma sequência.");
+                    return fail("openSequence");
                 }
                 app.enableQE();
                 return frameResult(seq.name + " " + qe.project.getActiveSequence().CTI.timecode);
@@ -277,7 +283,7 @@ var ConsolePR = (function () {
         captureFrame: function (basePath) {
             try {
                 if (!app.project.activeSequence) {
-                    return result(false, "Abra uma sequência.");
+                    return fail("openSequence");
                 }
                 app.enableQE();
                 var qeSeq = qe.project.getActiveSequence();
@@ -294,7 +300,7 @@ var ConsolePR = (function () {
             try {
                 var seq = app.project.activeSequence;
                 if (!seq) {
-                    return result(false, "Nenhuma sequência ativa.");
+                    return fail("noSequence");
                 }
                 app.enableQE();
                 var qeSeq = qe.project.getActiveSequence();
@@ -305,7 +311,7 @@ var ConsolePR = (function () {
                     ? qe.project.getVideoEffectByName(name)
                     : qe.project.getAudioEffectByName(name);
                 if (!effect) {
-                    return result(false, "Efeito não encontrado: " + name);
+                    return fail("effectMissing", name);
                 }
 
                 var applied = applyToTracks(tracks, function (t) {
@@ -319,14 +325,12 @@ var ConsolePR = (function () {
                 }
                 var otherSelected = countSelected(isVideo ? seq.audioTracks : seq.videoTracks);
                 if (otherSelected > 0) {
-                    return result(false, isVideo
-                        ? "Efeito de vídeo: selecione um clipe de vídeo."
-                        : "Efeito de áudio: selecione um clipe de áudio.");
+                    return fail(isVideo ? "needVideoClip" : "needAudioClip");
                 }
                 if (countSelected(tracks) > 0) {
-                    return result(false, "Não foi possível aplicar: " + name);
+                    return fail("applyFailed", name);
                 }
-                return result(false, "Selecione um clipe na timeline.");
+                return fail("selectClip");
             } catch (e) {
                 return result(false, e.toString());
             }

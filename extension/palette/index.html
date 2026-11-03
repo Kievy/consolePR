@@ -8,39 +8,40 @@
 <body>
   <header>
     <span id="search-icon" data-icon="search"></span>
-    <input id="search" type="text" spellcheck="false" autocomplete="off" placeholder="Buscar efeito..." autofocus>
-    <span id="settings-title" hidden>Configurações</span>
-    <button id="frame-button" type="button" title="Print do frame atual" aria-label="Print do frame atual" aria-haspopup="menu" aria-expanded="false" data-icon="camera"></button>
-    <button id="settings-button" type="button" title="Configurações" aria-label="Configurações" data-icon="gear"></button>
+    <input id="search" type="text" spellcheck="false" autocomplete="off" placeholder="Buscar efeito..." data-i18n-placeholder="search.placeholder" autofocus>
+    <span id="settings-title" data-i18n="settings.title" hidden>Configurações</span>
+    <button id="frame-button" type="button" title="Print do frame atual" aria-label="Print do frame atual" data-i18n-title="frame.title" aria-haspopup="menu" aria-expanded="false" data-icon="camera"></button>
+    <button id="settings-button" type="button" title="Configurações" aria-label="Configurações" data-i18n-title="settings.title" data-icon="gear"></button>
     <div id="frame-menu" role="menu" hidden>
-      <button type="button" role="menuitem" data-frame="clipboard"><span data-icon="clipboard"></span>Copiar para a área de transferência</button>
-      <button type="button" role="menuitem" data-frame="png"><span data-icon="picture"></span>Salvar como PNG</button>
-      <button type="button" role="menuitem" data-frame="jpeg"><span data-icon="picture"></span>Salvar como JPEG</button>
+      <button type="button" role="menuitem" data-frame="clipboard"><span data-icon="clipboard"></span><span data-i18n="frame.clipboard">Copiar para a área de transferência</span></button>
+      <button type="button" role="menuitem" data-frame="png"><span data-icon="picture"></span><span data-i18n="frame.png">Salvar como PNG</span></button>
+      <button type="button" role="menuitem" data-frame="jpeg"><span data-icon="picture"></span><span data-i18n="frame.jpeg">Salvar como JPEG</span></button>
     </div>
   </header>
   <main id="list" role="listbox"></main>
   <section id="settings" hidden>
-    <label for="hotkey-field">Atalho para abrir o ConsolePR</label>
+    <label for="hotkey-field" data-i18n="hotkey.label">Atalho para abrir o ConsolePR</label>
     <button id="hotkey-field" type="button"></button>
     <p id="hotkey-message" role="status"></p>
-    <p class="hint">Clique no campo e pressione a combinação: Ctrl ou Alt com letra, número ou Espaço, ou uma tecla F. Com o programa em foco, ela tem prioridade sobre comandos iguais dele.</p>
+    <p class="hint" data-i18n="hotkey.hint">Clique no campo e pressione a combinação: Ctrl ou Alt com letra, número ou Espaço, ou uma tecla F. Com o programa em foco, ela tem prioridade sobre comandos iguais dele.</p>
     <button id="hotkey-default" type="button"></button>
     <div id="accent-control">
-      <label for="accent-hex">Cor de destaque</label>
+      <label for="accent-hex" data-i18n="accent.label">Cor de destaque</label>
       <div id="accent-row">
-        <button id="accent-swatch" type="button" title="Abrir seletor de cores" aria-label="Abrir seletor de cores" aria-expanded="false"></button>
+        <button id="accent-swatch" type="button" title="Abrir seletor de cores" aria-label="Abrir seletor de cores" data-i18n-title="accent.open" aria-expanded="false"></button>
         <input id="accent-hex" type="text" maxlength="7" spellcheck="false" autocomplete="off" aria-describedby="accent-message">
-        <button id="accent-default" type="button">Padrão</button>
+        <button id="accent-default" type="button" data-i18n="accent.default">Padrão</button>
       </div>
       <p id="accent-message" role="status" hidden></p>
       <div id="accent-picker" hidden>
-        <div id="accent-sv" role="application" aria-label="Saturação e brilho"><div id="accent-sv-thumb"></div></div>
-        <input id="accent-hue" type="range" min="0" max="360" step="1" aria-label="Matiz">
+        <div id="accent-sv" role="application" aria-label="Saturação e brilho" data-i18n-aria="accent.sv"><div id="accent-sv-thumb"></div></div>
+        <input id="accent-hue" type="range" min="0" max="360" step="1" aria-label="Matiz" data-i18n-aria="accent.hue">
       </div>
     </div>
-    <p class="credit">Feito por <a id="credit-link" href="https://www.instagram.com/kievydsg/">@kievydsg</a></p>
+    <p class="credit"><span data-i18n="credit.by">Feito por</span> <a id="credit-link" href="https://www.instagram.com/kievydsg/">@kievydsg</a></p>
   </section>
   <footer id="status" hidden></footer>
+  <script src="i18n.js"></script>
   <script src="icons.js"></script>
   <script src="search.js"></script>
   <script src="hotkey.js"></script>

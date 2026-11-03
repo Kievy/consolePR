@@ -25,13 +25,13 @@
         }
         var key = keyName(event.keyCode);
         if (!key) {
-            return { error: "Essa tecla não pode ser usada no atalho." };
+            return { error: "hotkey.badKey" };
         }
         if (!event.ctrlKey && !event.altKey && !/^F\d+$/.test(key)) {
-            return { error: "Use Ctrl ou Alt junto com a tecla." };
+            return { error: "hotkey.needModifier" };
         }
         if (event.altKey && key === "F4") {
-            return { error: "Alt + F4 é reservado pelo Windows." };
+            return { error: "hotkey.altF4" };
         }
         var parts = [];
         if (event.ctrlKey) {
@@ -47,8 +47,15 @@
         return { hotkey: parts.join("+") };
     }
 
-    function label(hotkey) {
-        return hotkey.replace(/Space/, "Espaço").replace(/\+/g, " + ");
+    // locale is optional. Without it, the label follows ConsoleI18n, or Portuguese
+    // when that module has not been loaded (the hotkey tests).
+    function label(hotkey, locale) {
+        var code = locale;
+        if (!code && root.ConsoleI18n) {
+            code = root.ConsoleI18n.locale();
+        }
+        var space = !code || /^pt/i.test(String(code).replace(/_/g, "-")) ? "Espaço" : "Space";
+        return String(hotkey).replace(/Space/g, space).replace(/\+/g, " + ");
     }
 
     // Name of the saved setting. Premiere keeps the name it had before the port.
