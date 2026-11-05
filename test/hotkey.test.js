@@ -39,3 +39,13 @@ test("label is readable", () => {
     assert.strictEqual(label("Ctrl+Space"), "Ctrl + Espaço");
     assert.strictEqual(label("Ctrl+Shift+F"), "Ctrl + Shift + F");
 });
+
+test("on macOS the Command key counts and Option is named", () => {
+    assert.deepStrictEqual(fromKeyEvent(key(32, { metaKey: true, shiftKey: true }), true), { hotkey: "Shift+Cmd+Space" });
+    assert.deepStrictEqual(fromKeyEvent(key(32, { ctrlKey: true }), true), { hotkey: "Ctrl+Space" });
+    assert.deepStrictEqual(fromKeyEvent(key(115, { altKey: true }), true), { hotkey: "Alt+F4" });
+    assert.strictEqual(fromKeyEvent(key(65), true).error, "hotkey.needModifierMac");
+    assert.strictEqual(fromKeyEvent(key(65, { metaKey: true }), false).error, "hotkey.needModifier");
+    assert.strictEqual(label("Ctrl+Alt+Space", "en_US", true), "Ctrl + Option + Space");
+    assert.strictEqual(label("Ctrl+Alt+Space", "en_US", false), "Ctrl + Alt + Space");
+});

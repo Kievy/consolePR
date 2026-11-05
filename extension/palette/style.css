@@ -25,7 +25,7 @@ html, body {
   overflow: hidden;
   background: var(--window-dark);
   color: var(--text);
-  font: 500 15px "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
+  font: 500 15px "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   user-select: none;
 }
 
@@ -37,6 +37,12 @@ body {
   background:
     radial-gradient(90% 55% at 72% 0%, var(--window-light) 0%, transparent 100%),
     linear-gradient(180deg, var(--window) 0%, var(--window-dark) 100%);
+}
+
+/* macOS keeps the system title bar, so the window can't be rounded */
+body.platform-mac {
+  border: 0;
+  border-radius: 0;
 }
 
 .pixel-icon {

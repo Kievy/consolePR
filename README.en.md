@@ -6,13 +6,15 @@ Fast effect search for Adobe Premiere Pro and After Effects, in the style of FX 
 
 ![ConsolePR window filtering video and audio effects as a name is typed, and opening the frame capture menu](docs/demo.gif)
 
-Tested on Premiere Pro 2026 (26.5.2) and After Effects 2026 (26.5) on Windows. The global shortcut exists only on Windows. The manifest accepts version 22 or later of both apps, but versions older than the ones tested were not checked.
+Tested on Premiere Pro 2026 (26.5.2) and After Effects 2026 (26.5) on Windows. macOS support is written but has not been tested on a Mac yet. The manifest accepts version 22 or later of both apps, but versions older than the ones tested were not checked.
 
-The panel follows the language of Premiere or After Effects: Portuguese when the app is in Portuguese, and English otherwise. `install.bat` and `uninstall.bat` follow the Windows language the same way.
+The panel follows the language of Premiere or After Effects: Portuguese when the app is in Portuguese, and English otherwise. The installers follow the system language the same way.
 
 ## Installation
 
-You need Windows and Premiere Pro or After Effects. Nothing else has to be installed.
+You need Premiere Pro or After Effects, on Windows or macOS. Nothing else has to be installed.
+
+### Windows
 
 1. Close Premiere and After Effects.
 2. Download the project: on this page click **Code > Download ZIP** and extract it anywhere. Or use Git:
@@ -28,14 +30,30 @@ The installer copies the extension to `%APPDATA%\Adobe\CEP\extensions\com.consol
 
 The extension is not signed, so the installer also turns on CEP `PlayerDebugMode` in the user registry. Without that, Premiere will not load it.
 
+### macOS
+
+1. Close Premiere and After Effects.
+2. Download and extract the ZIP as on Windows.
+3. Right-click **`install.command`** and choose **Open** (macOS blocks double-clicking downloaded scripts). Or run it in Terminal, inside the extracted folder:
+
+   ```bash
+   bash install.command
+   ```
+
+4. Open the app and press `Control+Space`. The first time, macOS asks you to allow Premiere or After Effects under **System Settings > Privacy & Security > Input Monitoring**. Turn it on and reopen the app.
+
+The installer copies the extension to `~/Library/Application Support/Adobe/CEP/extensions/com.consolepr` and turns on CEP `PlayerDebugMode` with `defaults write`.
+
+On macOS the window keeps the system title bar, and the shortcut is not held back from the rest of the system. If `Control+Space` also switches the keyboard language on your Mac, [change the shortcut](#changing-the-shortcut) or turn that off in **System Settings > Keyboard > Keyboard Shortcuts > Input Sources**.
+
 ### If it does not work
 
-- **The shortcut does not open the window:** check that the extension is listed in `Window > Extensions > ConsolePR`, and look at `%TEMP%\consolepr.log`. Another program may already be using the same combination; in that case, [change the shortcut](#changing-the-shortcut).
+- **The shortcut does not open the window:** check that the extension is listed in `Window > Extensions > ConsolePR`, and look at `consolepr.log` in the temp folder (`%TEMP%` on Windows, `$TMPDIR` on macOS). On macOS, also check the Input Monitoring permission. Another program may already be using the same combination; in that case, [change the shortcut](#changing-the-shortcut).
 - **The extension is not in the menu:** make sure Premiere was restarted after installation.
 
 ### Uninstall
 
-With Premiere and After Effects closed, double-click **`uninstall.bat`**. It removes the extension and the saved shortcut, and leaves `PlayerDebugMode` on because other extensions may need it.
+With Premiere and After Effects closed, double-click **`uninstall.bat`** (Windows) or open **`uninstall.command`** (macOS). It removes the extension and the saved shortcut, and leaves `PlayerDebugMode` on because other extensions may need it.
 
 ## Usage
 
@@ -77,11 +95,11 @@ Premiere does not expose easing to scripts, so the button does not appear there.
 1. Open the window and click the gear next to the search field.
 2. Click the shortcut field and press the new combination. It takes effect immediately, without restarting Premiere.
 
-Use `Ctrl` or `Alt` with a letter, number, or Space, or a function key. If another program is already using that combination, the previous shortcut stays in place. **Restore default** returns to `Ctrl+Space`.
+Use `Ctrl` or `Alt` with a letter, number, or Space, or a function key. On macOS `Command` works too, and `Alt` shows as `Option`. If another program is already using that combination, the previous shortcut stays in place. **Restore default** returns to `Ctrl+Space`.
 
 Each app stores its own shortcut. If you use FX Console in After Effects, ConsolePR takes priority over `Ctrl+Space`; change one of the two shortcuts to use both.
 
-Settings live in `%APPDATA%\ConsolePR\config.json` and are kept across reinstalls and updates.
+Settings live in `%APPDATA%\ConsolePR\config.json` on Windows and `~/Library/Application Support/ConsolePR/config.json` on macOS, and are kept across reinstalls and updates.
 
 The shortcut is registered only while Premiere or After Effects is in front, so the same combination keeps working in other programs. While the app is in front, it takes priority over the same shortcut set inside the app itself.
 
@@ -94,14 +112,15 @@ On the same gear screen, type a hexadecimal code (such as `#C64BF2`) or click th
 | Part | Role |
 | --- | --- |
 | `extension/background` | Invisible extension that starts with the app and owns the shortcut process |
-| `extension/helper/hotkey.ps1` | Registers the shortcut, removes the window title bar, centers the window, and focuses the search field |
+| `extension/helper/hotkey.ps1` | Windows: registers the shortcut, removes the window title bar, centers the window, and focuses the search field |
+| `extension/helper/hotkey-mac.js` | macOS: JXA script, run by the system `osascript`, that reports each shortcut press |
 | `extension/palette` | Search window |
 | `extension/palette/i18n.js` | Panel text in Portuguese and English |
 | `extension/jsx/host.jsx` | Lists and applies effects: the QE API in Premiere and `app.effects` in After Effects |
 
 Premiere's QE API is not documented by Adobe and may change in future versions.
 
-Shortcut problems are recorded in `%TEMP%\consolepr.log`.
+Shortcut problems are recorded in `consolepr.log`, in the system temp folder.
 
 ## Tests
 

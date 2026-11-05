@@ -1,1 +1,3 @@
 *.bat text eol=crlf
+*.command text eol=lf
+extension/helper/*.js text eol=lf

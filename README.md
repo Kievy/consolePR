@@ -6,13 +6,15 @@ Busca rápida de efeitos para o Adobe Premiere Pro e o After Effects, no estilo 
 
 ![Janela do ConsolePR filtrando efeitos de vídeo e de áudio enquanto o nome é digitado, e abrindo o menu de print do frame](docs/demo.gif)
 
-Testado no Premiere Pro 2026 (26.5.2) e no After Effects 2026 (26.5) no Windows. O atalho global só existe no Windows. O manifesto aceita as versões 22 ou superiores dos dois programas, mas versões anteriores às testadas não foram verificadas.
+Testado no Premiere Pro 2026 (26.5.2) e no After Effects 2026 (26.5) no Windows. O suporte a macOS foi escrito, mas ainda não foi testado num Mac. O manifesto aceita as versões 22 ou superiores dos dois programas, mas versões anteriores às testadas não foram verificadas.
 
-A janela segue o idioma do Premiere ou do After Effects: português quando o programa está em português e inglês nos demais. As mensagens de `install.bat` e `uninstall.bat` seguem o idioma do Windows da mesma forma.
+A janela segue o idioma do Premiere ou do After Effects: português quando o programa está em português e inglês nos demais. As mensagens dos instaladores seguem o idioma do sistema da mesma forma.
 
 ## Instalação
 
-Você precisa de Windows e do Premiere Pro ou do After Effects instalado. Não é preciso instalar mais nada.
+Você precisa do Premiere Pro ou do After Effects instalado, no Windows ou no macOS. Não é preciso instalar mais nada.
+
+### Windows
 
 1. Feche o Premiere e o After Effects.
 2. Baixe o projeto: clique em **Code > Download ZIP** nesta página e extraia o arquivo em qualquer pasta. Se preferir usar o Git:
@@ -28,14 +30,30 @@ O instalador copia a extensão para `%APPDATA%\Adobe\CEP\extensions\com.consolep
 
 A extensão não é assinada, então o instalador também liga o `PlayerDebugMode` do CEP no registro do usuário. Sem isso, o Premiere não a carrega.
 
+### macOS
+
+1. Feche o Premiere e o After Effects.
+2. Baixe o ZIP como no Windows e extraia.
+3. Clique com o botão direito em **`install.command`** e escolha **Abrir** (o macOS bloqueia o duplo clique em scripts baixados). Se preferir, rode no Terminal, dentro da pasta extraída:
+
+   ```bash
+   bash install.command
+   ```
+
+4. Abra o programa e aperte `Control+Espaço`. Na primeira vez, o macOS pede para permitir o Premiere ou o After Effects em **Ajustes do Sistema > Privacidade e Segurança > Monitoramento de Entrada**. Ative a permissão e reabra o programa.
+
+O instalador copia a extensão para `~/Library/Application Support/Adobe/CEP/extensions/com.consolepr` e liga o `PlayerDebugMode` do CEP com `defaults write`.
+
+No macOS a janela mantém a barra de título do sistema, e o atalho não é bloqueado para o resto do sistema. Se `Control+Espaço` também troca o idioma do teclado no seu Mac, [troque o atalho](#trocar-o-atalho) ou desative essa opção em **Ajustes do Sistema > Teclado > Atalhos de Teclado > Fontes de Entrada**.
+
 ### Se não funcionar
 
-- **O atalho não abre a janela:** veja se a extensão aparece em `Window > Extensions > ConsolePR` e confira o arquivo `%TEMP%\consolepr.log`. Outro programa pode já estar usando a mesma combinação; nesse caso, [troque o atalho](#trocar-o-atalho).
+- **O atalho não abre a janela:** veja se a extensão aparece em `Window > Extensions > ConsolePR` e confira o arquivo `consolepr.log` na pasta temporária (`%TEMP%` no Windows, `$TMPDIR` no macOS). No macOS, confira também a permissão de Monitoramento de Entrada. Outro programa pode já estar usando a mesma combinação; nesse caso, [troque o atalho](#trocar-o-atalho).
 - **A extensão não aparece no menu:** confirme que o Premiere foi reiniciado depois da instalação.
 
 ### Desinstalar
 
-Com o Premiere e o After Effects fechados, dê dois cliques em **`uninstall.bat`**. Ele remove a extensão e o atalho salvo, e mantém o `PlayerDebugMode` ligado porque outras extensões podem precisar dele.
+Com o Premiere e o After Effects fechados, dê dois cliques em **`uninstall.bat`** (Windows) ou abra **`uninstall.command`** (macOS). Ele remove a extensão e o atalho salvo, e mantém o `PlayerDebugMode` ligado porque outras extensões podem precisar dele.
 
 ## Uso
 
@@ -77,11 +95,11 @@ O Premiere não permite controlar a suavização por script, por isso o botão n
 1. Abra a janela e clique na engrenagem ao lado da busca.
 2. Clique no campo do atalho e pressione a nova combinação. Ela passa a valer na hora, sem reiniciar o Premiere.
 
-Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para `Ctrl+Espaço`.
+Use `Ctrl` ou `Alt` com uma letra, número ou Espaço, ou uma tecla F. No macOS também vale `Command`, e `Alt` aparece como `Option`. Se outro programa já estiver usando a combinação, o atalho anterior continua valendo. O botão **Restaurar padrão** volta para `Ctrl+Espaço`.
 
 Cada programa guarda o próprio atalho. Se você usa o FX Console no After Effects, o ConsolePR tem prioridade sobre o `Ctrl+Espaço`; troque o atalho de um dos dois para usar ambos.
 
-As configurações ficam em `%APPDATA%\ConsolePR\config.json` e são mantidas ao reinstalar ou atualizar.
+As configurações ficam em `%APPDATA%\ConsolePR\config.json` no Windows e em `~/Library/Application Support/ConsolePR/config.json` no macOS, e são mantidas ao reinstalar ou atualizar.
 
 O atalho só fica registrado enquanto o Premiere ou o After Effects está em primeiro plano, então a mesma combinação continua funcionando nos outros programas. Enquanto isso, ele tem prioridade sobre um atalho igual configurado no próprio programa.
 
@@ -94,14 +112,15 @@ Na mesma tela da engrenagem, digite um código hexadecimal (como `#C64BF2`) ou c
 | Parte | Função |
 | --- | --- |
 | `extension/background` | Extensão invisível que inicia com o programa e controla o processo do atalho |
-| `extension/helper/hotkey.ps1` | Registra o atalho, tira a barra de título da janela, centraliza e dá foco ao campo de busca |
+| `extension/helper/hotkey.ps1` | Windows: registra o atalho, tira a barra de título da janela, centraliza e dá foco ao campo de busca |
+| `extension/helper/hotkey-mac.js` | macOS: script JXA, rodado pelo `osascript` do sistema, que avisa quando o atalho é pressionado |
 | `extension/palette` | Janela de busca |
 | `extension/palette/i18n.js` | Textos da janela em português e inglês |
 | `extension/jsx/host.jsx` | Lista e aplica os efeitos: API QE no Premiere e `app.effects` no After Effects |
 
 A API QE do Premiere não é documentada pela Adobe e pode mudar em versões futuras.
 
-Problemas com o atalho ficam registrados em `%TEMP%\consolepr.log`.
+Problemas com o atalho ficam registrados em `consolepr.log`, na pasta temporária do sistema.
 
 ## Testes
 

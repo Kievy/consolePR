@@ -11,25 +11,36 @@
     var host = JSON.parse(cep.getHostEnvironment());
     var APP_ID = host.appId;
     ConsoleI18n.setLocale(host.appLocale);
-    // CEPHtmlEngine's parent process is not always the host, so find it by name.
-    var HOST_PROCESSES = { PPRO: "Adobe Premiere", AEFT: "AfterFX" };
+    var IS_MAC = process.platform === "darwin";
+    // CEPHtmlEngine's parent process is not always the host, so the helper finds
+    // it by process name on Windows and by bundle id on macOS.
+    var HOST_PROCESSES = IS_MAC
+        ? { PPRO: "com.adobe.PremierePro", AEFT: "com.adobe.AfterEffects" }
+        : { PPRO: "Adobe Premiere", AEFT: "AfterFX" };
     var ACCENT_PATTERN = /^#[0-9A-F]{6}$/i;
     var FRAME_TIMEOUT_MS = 30000;
     var FRAME_POLL_MS = 150;
     var JPEG_QUALITY = 0.95;
 
     var extensionDir = path.normalize(
-        decodeURI(cep.getSystemPath("extension")).replace(/^file:\/+/, "")
+        decodeURI(cep.getSystemPath("extension")).replace(/^file:\/+/, IS_MAC ? "/" : "")
     );
     var logFile = path.join(os.tmpdir(), "consolepr.log");
     // Outside the extension folder so that reinstalling keeps the user's hotkey.
-    var configDir = path.join(process.env.APPDATA, "ConsolePR");
+    var configDir = IS_MAC
+        ? path.join(os.homedir(), "Library", "Application Support", "ConsolePR")
+        : path.join(process.env.APPDATA, "ConsolePR");
     var configFile = path.join(configDir, "config.json");
 
     var paletteOpen = false;
     var helper = null;
     var effectsJson = null;
     var clipboardDone = null;
+    // The macOS helper can't hold the hotkey back from other programs, so presses
+    // are ignored here while the palette records a new one.
+    var hotkeySuspended = false;
+    var permissionNeeded = false;
+    var pendingHotkey = null; // { candidate, previous } while the macOS helper restarts
     var currentHotkey = ConsoleHotkey.DEFAULT;
     // Each host keeps its own hotkey; the accent color is shared.
     var hotkeySetting = ConsoleHotkey.settingFor(APP_ID);
@@ -86,48 +97,126 @@
         }
     }
 
-    function startHelper() {
-        var script = path.join(extensionDir, "helper", "hotkey.ps1");
-        helper = childProcess.spawn("powershell.exe", [
-            "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-            "-File", script, "-Hotkey", currentHotkey, "-HostProcess", HOST_PROCESSES[APP_ID]
-        ], { windowsHide: true });
+    function startHelper(hotkey) {
+        var child;
+        if (IS_MAC) {
+            child = childProcess.spawn("/usr/bin/osascript", [
+                "-l", "JavaScript", path.join(extensionDir, "helper", "hotkey-mac.js"),
+                hotkey, HOST_PROCESSES[APP_ID]
+            ]);
+        } else {
+            child = childProcess.spawn("powershell.exe", [
+                "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                "-File", path.join(extensionDir, "helper", "hotkey.ps1"),
+                "-Hotkey", hotkey, "-HostProcess", HOST_PROCESSES[APP_ID]
+            ], { windowsHide: true });
+        }
+        helper = child;
 
         var buffered = "";
-        helper.stdout.on("data", function (chunk) {
+        child.stdout.on("data", function (chunk) {
             buffered += chunk.toString();
             var lines = buffered.split(/\r?\n/);
             buffered = lines.pop();
             lines.forEach(function (line) {
-                var text = line.trim();
-                if (text === "hotkey") {
-                    onHotkey();
-                } else if (text.indexOf("hotkey-ok ") === 0) {
-                    currentHotkey = text.substring("hotkey-ok ".length);
-                    saveSetting(hotkeySetting, currentHotkey);
-                    dispatch("com.consolepr.hotkeySaved", currentHotkey);
-                } else if (text === "clipboard-ok" || text.indexOf("clipboard-error") === 0) {
-                    if (clipboardDone) {
-                        var finish = clipboardDone;
-                        clipboardDone = null;
-                        finish(text === "clipboard-ok" ? null : text.substring("clipboard-error ".length));
-                    }
-                } else if (text.indexOf("hotkey-error ") === 0) {
-                    dispatch("com.consolepr.hotkeyRejected", text.substring("hotkey-error ".length));
-                } else if (text) {
-                    log("helper: " + text);
-                }
+                onHelperLine(line.trim());
             });
         });
-        helper.stderr.on("data", function (chunk) {
+        child.stderr.on("data", function (chunk) {
             log("helper error: " + chunk.toString().trim());
         });
-        helper.on("error", function (err) {
+        child.on("error", function (err) {
             log("could not start helper: " + err.message);
         });
-        helper.on("exit", function (code) {
+        child.on("exit", function (code) {
             log("helper exited with code " + code);
-            helper = null;
+            // A replaced helper exits after the new one has started.
+            if (helper === child) {
+                helper = null;
+                if (pendingHotkey) {
+                    macHotkeyFailed();
+                }
+            }
+        });
+    }
+
+    function onHelperLine(text) {
+        if (text === "hotkey") {
+            if (!hotkeySuspended) {
+                onHotkey();
+            }
+        } else if (text.indexOf("hotkey-ok ") === 0) {
+            hotkeyAccepted(text.substring("hotkey-ok ".length));
+        } else if (text === "clipboard-ok" || text.indexOf("clipboard-error") === 0) {
+            clipboardFinished(text === "clipboard-ok" ? null : text.substring("clipboard-error ".length));
+        } else if (text.indexOf("hotkey-error ") === 0) {
+            dispatch("com.consolepr.hotkeyRejected", text.substring("hotkey-error ".length));
+        } else if (text === "ready") {
+            if (pendingHotkey) {
+                var accepted = pendingHotkey.candidate;
+                pendingHotkey = null;
+                hotkeyAccepted(accepted);
+            }
+        } else if (text === "bad-hotkey") {
+            if (pendingHotkey) {
+                macHotkeyFailed();
+            } else {
+                log("saved hotkey not understood: " + currentHotkey);
+            }
+        } else if (text === "permission-needed") {
+            permissionNeeded = true;
+            log("macOS Input Monitoring permission is missing");
+        } else if (text) {
+            log("helper: " + text);
+        }
+    }
+
+    function hotkeyAccepted(hotkey) {
+        currentHotkey = hotkey;
+        hotkeySuspended = false;
+        saveSetting(hotkeySetting, currentHotkey);
+        dispatch("com.consolepr.hotkeySaved", currentHotkey);
+    }
+
+    // macOS: a new hotkey means a new helper. If it can't use it, go back.
+    function setMacHotkey(candidate) {
+        pendingHotkey = { candidate: candidate, previous: currentHotkey };
+        hotkeySuspended = false;
+        var old = helper;
+        startHelper(candidate);
+        if (old) {
+            old.kill();
+        }
+    }
+
+    function macHotkeyFailed() {
+        var failed = pendingHotkey;
+        pendingHotkey = null;
+        dispatch("com.consolepr.hotkeyRejected", failed.candidate);
+        var old = helper;
+        startHelper(failed.previous);
+        if (old) {
+            old.kill();
+        }
+    }
+
+    function clipboardFinished(error) {
+        if (clipboardDone) {
+            var finish = clipboardDone;
+            clipboardDone = null;
+            finish(error);
+        }
+    }
+
+    // Puts the PNG itself on the clipboard, at full quality and with transparency.
+    function copyToMacClipboard(pngFile) {
+        childProcess.execFile("/usr/bin/osascript", [
+            "-e", "on run argv",
+            "-e", "set the clipboard to (read (POSIX file (item 1 of argv)) as «class PNGf»)",
+            "-e", "end run",
+            pngFile
+        ], function (err, stdout, stderr) {
+            clipboardFinished(err ? String(stderr || err.message).trim() : null);
         });
     }
 
@@ -198,6 +287,11 @@
 
     function deliverFrame(request, pngFile, done) {
         if (request.mode === "clipboard") {
+            if (IS_MAC) {
+                clipboardDone = done;
+                copyToMacClipboard(pngFile);
+                return;
+            }
             if (!helper) {
                 done(ConsoleI18n.t("frame.helperDown"));
                 return;
@@ -259,7 +353,11 @@
     }
 
     function tellHelper(command) {
-        if (helper) {
+        if (command === "suspend-hotkey" || command === "resume-hotkey") {
+            hotkeySuspended = command === "suspend-hotkey";
+        }
+        // The macOS helper only listens; the window and focus are left to macOS.
+        if (helper && !IS_MAC) {
             helper.stdin.write(command + "\n");
         }
     }
@@ -270,6 +368,9 @@
         dispatch("com.consolepr.hotkeyCurrent", currentHotkey);
         var settings = readConfig();
         dispatch("com.consolepr.saveFolderCurrent", settings.saveFolder || path.join(os.homedir(), "Desktop"));
+        if (permissionNeeded) {
+            dispatch("com.consolepr.hotkeyPermission");
+        }
         var accent = settings.accent;
         if (ACCENT_PATTERN.test(accent)) {
             dispatch("com.consolepr.accentCurrent", accent);
@@ -302,7 +403,9 @@
         }
     });
     cep.addEventListener("com.consolepr.setHotkey", function (event) {
-        if (helper) {
+        if (IS_MAC) {
+            setMacHotkey(event.data);
+        } else if (helper) {
             tellHelper("set-hotkey " + event.data);
         } else {
             dispatch("com.consolepr.hotkeyRejected", event.data);
@@ -311,6 +414,6 @@
 
     log(APP_ID + " background started, extension at " + extensionDir);
     currentHotkey = readConfig()[hotkeySetting] || currentHotkey;
-    startHelper();
+    startHelper(currentHotkey);
     loadEffects();
 })();

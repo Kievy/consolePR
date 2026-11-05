@@ -664,6 +664,11 @@
         showHotkeyMessage(ConsoleI18n.t("hotkey.inUse", { label: ConsoleHotkey.label(event.data) }), true);
     });
 
+    // macOS only: the hotkey can't be seen until the host app is allowed to.
+    cep.addEventListener("com.consolepr.hotkeyPermission", function () {
+        showStatus(ConsoleI18n.t("hotkey.macPermission"), true);
+    });
+
     // Clicking a row or the scrollbar must not take the caret out of the search box.
     list.addEventListener("mousedown", function (event) {
         event.preventDefault();
@@ -753,6 +758,8 @@
 
     hotkeyDefault.textContent = ConsoleI18n.t("hotkey.restore", { label: ConsoleHotkey.label(ConsoleHotkey.DEFAULT) });
     document.body.classList.add("host-" + JSON.parse(cep.getHostEnvironment()).appId);
+    // macOS keeps the window's title bar and square corners.
+    document.body.classList.toggle("platform-mac", ConsoleHotkey.IS_MAC);
     setAccent(accent);
     render();
     search.focus();
