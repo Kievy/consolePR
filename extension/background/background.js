@@ -33,6 +33,7 @@
     var configFile = path.join(configDir, "config.json");
 
     var paletteOpen = false;
+    var openCount = 0; // tells one opened palette window from the next
     var helper = null;
     var effectsJson = null;
     var clipboardDone = null;
@@ -86,8 +87,11 @@
         if (paletteOpen) {
             dispatch("com.consolepr.toggle");
             // If the palette died without saying so, don't leave the hotkey stuck.
+            // Only this same window counts: pressing again quickly can close it
+            // and open a new one before the check runs.
+            var openedAt = openCount;
             setTimeout(function () {
-                if (paletteOpen) {
+                if (paletteOpen && openCount === openedAt) {
                     paletteOpen = false;
                     cep.requestOpenExtension(PALETTE_ID, "");
                 }
@@ -364,6 +368,7 @@
 
     cep.addEventListener("com.consolepr.opened", function () {
         paletteOpen = true;
+        openCount++;
         tellHelper("present");
         dispatch("com.consolepr.hotkeyCurrent", currentHotkey);
         var settings = readConfig();
